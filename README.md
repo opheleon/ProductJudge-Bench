@@ -126,6 +126,17 @@ conflicting customer requests, A/B readouts, clarify-vs-decide). This is a
 harness pilot, not a leaderboard: discrimination claims wait for at least
 three model families, repeat runs, and a held-out split, per the roadmap.
 
+**Pilot result (July 2026, honest and unflattering):** claude-fable-5 and
+GLM-5.2 both score **100%** on v0.1 at high reasoning effort (total cost
+$0.57), against a 57% best-trivial-baseline floor. The harness works
+end-to-end — both counterfactual pairs flipped, the clarify pair split
+exactly, prose extraction held — but frontier models apply a stated policy
+to a dozen facts without dropping anything. The construct survives; the
+difficulty does not. v0.2 must scale the evidence (30+ cluster corpora,
+multi-document haystacks at realistic length), chain gates so feasibility
+requires multi-step derivation, and push unknowns into subtler
+value-of-information territory before any leaderboard is published.
+
 ## Related work
 
 We found no benchmark specifically targeting deterministic product-management
