@@ -1,0 +1,118 @@
+instance_id: conf-devtools-001
+family: conflicting-customers
+pair_id: conf-devtools
+variant: base
+domain: devtools-saas
+difficulty: medium
+version: 0.1.0
+split: public
+
+title: Three accounts, one sprint train, conflicting asks
+
+company_context: >
+  You run product for a CI/CD platform. Three customer requests are competing
+  for the 8 engineer-weeks the integrations squad has this cycle. Acme (your
+  largest account) wants a deep integration with their internal deployment
+  orchestrator. Betaworks wants scheduled artifact exports to their data
+  warehouse. Gamma Labs wants SSO group-mapping. A platform engineer has also
+  proposed a generic outbound-webhooks API: it would let Betaworks build their
+  export sync and Gamma automate group-mapping themselves, and its modeled
+  value reflects that consolidation. Company strategy (ratified in January)
+  commits the platform to vendor-neutral interfaces; integrations that couple
+  the product to one customer's proprietary internal system are out of bounds.
+
+evidence: >
+  Account notes. Acme: $700k weighted value on the deep integration ask, but
+  their orchestrator is an internal fork nobody else runs; solution
+  engineering flagged the coupling as proprietary and single-tenant.
+  Betaworks: warehouse exports modeled at $300k weighted. Gamma Labs: SSO
+  group-mapping modeled at $180k weighted. Platform proposal: the
+  outbound-webhooks API is modeled at $520k weighted, combining the Betaworks
+  and Gamma use cases it unlocks and self-serve automation for the long tail.
+
+facts_in_prose: false
+
+fact_definitions:
+  eng_weeks: engineer-weeks of integrations-squad effort
+  retention_weighted_value_usd_k: modeled value in thousands of USD, weighted by renewal risk
+  conflicts_with_strategy: whether the item couples the platform to one customer's proprietary internal system, violating the vendor-neutrality strategy
+
+constraints:
+  - id: C1
+    text: The integrations squad has 8 engineer-weeks this cycle.
+  - id: C2
+    text: Per the January strategy, the platform ships vendor-neutral interfaces only; no coupling to a single customer's proprietary internal system.
+
+candidates:
+  - id: acme-deep-integration
+    title: Deep integration with Acme's internal deployment orchestrator
+    facts:
+      eng_weeks: 8
+      retention_weighted_value_usd_k: 700
+      conflicts_with_strategy: true
+  - id: beta-exports
+    title: Scheduled artifact exports for Betaworks
+    facts:
+      eng_weeks: 5
+      retention_weighted_value_usd_k: 300
+      conflicts_with_strategy: false
+  - id: problem-api-webhooks
+    title: Generic outbound-webhooks API (covers the Betaworks and Gamma use cases)
+    facts:
+      eng_weeks: 6
+      retention_weighted_value_usd_k: 520
+      conflicts_with_strategy: false
+  - id: gamma-sso
+    title: SSO group-mapping for Gamma Labs
+    facts:
+      eng_weeks: 3
+      retention_weighted_value_usd_k: 180
+      conflicts_with_strategy: false
+
+decision_spec:
+  kind: selection
+  action: build
+  capacity:
+    cost_fact: eng_weeks
+    budget: 8
+    unit: engineer-weeks
+  objective:
+    sense: maximize
+    value_fact: retention_weighted_value_usd_k
+    unit: thousands of USD
+  gates:
+    - kind: excluded_when
+      when: conflicts_with_strategy
+      basis: C2
+
+gold:
+  - id: g1
+    check: principal_selection
+    dimension: decision
+    action: build
+    optimal_sets:
+      - [problem-api-webhooks]
+
+traps:
+  - id: t1
+    description: Selecting acme-deep-integration because it is the largest account and the largest number.
+    why_attractive: >
+      $700k is the biggest weighted value on the board and the account carries
+      political weight, but the coupling is proprietary and single-tenant,
+      which the strategy gate excludes (C2).
+  - id: t2
+    description: Selecting beta-exports plus gamma-sso to satisfy two named customers.
+    why_attractive: >
+      Serving two logos feels better than serving zero directly, and it fits
+      the budget exactly (5 + 3 = 8). But it totals $480k against the
+      webhooks API's $520k, which unlocks both use cases anyway.
+
+gold_rationale: >
+  Worked math. acme-deep-integration is excluded by the vendor-neutrality gate
+  (conflicts_with_strategy=true, C2) regardless of its $700k value. Remaining
+  feasible sets within 8 engineer-weeks: problem-api-webhooks alone (6wk,
+  520); beta-exports + gamma-sso (8wk, 480); beta-exports (5wk, 300);
+  gamma-sso (3wk, 180); problem-api-webhooks + gamma-sso does not fit (9wk).
+  Unique optimum: problem-api-webhooks at 520. The problem-level item beats
+  account-weighted order-taking: it addresses the underlying need behind both
+  smaller requests at higher combined value.

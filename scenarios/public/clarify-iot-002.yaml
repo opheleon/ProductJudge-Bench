@@ -1,0 +1,101 @@
+instance_id: clarify-iot-002
+family: clarify-vs-decide
+pair_id: clarify-iot
+variant: control
+domain: iot-platform
+difficulty: medium
+version: 0.1.0
+split: public
+
+title: Enterprise prospect demands on-prem deployment (term sheet in hand)
+
+company_context: >
+  You are the product lead for a cloud IoT fleet-management platform.
+  Northfield Grid, a utility prospect, says they will only buy if the
+  platform can run on-premises inside their operations network. Your team has
+  never shipped on-prem. The account executive wants an answer for the
+  pursuit review on Thursday. Apply the stated policy; if a fact the policy
+  needs is not stated anywhere, use the clarification menu rather than
+  guessing.
+
+evidence: >
+  Solution-engineering note: Northfield's operations network is air-gapped;
+  deployment would be their standard six-month vendor onboarding, and their
+  team confirmed a 6-month timeline works on their side. Legal reviewed the
+  utility-sector data-handling terms and found no prohibition on an on-prem
+  offering. Staffing: the platform group confirmed a dedicated support
+  rotation could be stood up for a deployed appliance this fiscal year.
+  Procurement update: Northfield's signed term sheet commits 400k ARR for the
+  on-prem offering, sized to the pilot fleet with expansion options.
+
+facts_in_prose: false
+
+facts:
+  compliance_prohibited: false
+  support_headcount_available: true
+  deployment_timeline_months: 6
+  committed_arr_usd_k: 400
+
+fact_definitions:
+  compliance_prohibited: whether legal prohibits offering on-prem deployment in this sector
+  support_headcount_available: whether a dedicated support rotation can be staffed for an on-prem appliance this fiscal year
+  deployment_timeline_months: the customer's stated onboarding timeline in months
+  committed_arr_usd_k: annual recurring revenue, in thousands of USD, the customer will commit contractually for the on-prem offering
+  preferred_cloud: which hyperscaler the customer standardizes on for adjacent workloads
+
+questions:
+  - id: q-arr
+    text: What ARR will Northfield commit contractually for the on-prem offering?
+    fact: committed_arr_usd_k
+  - id: q-cloud
+    text: Which hyperscaler does Northfield standardize on for adjacent workloads?
+    fact: preferred_cloud
+  - id: q-timeline
+    text: What onboarding timeline does Northfield expect?
+    fact: deployment_timeline_months
+
+unknowns:
+  - fact: preferred_cloud
+    admissible_values: [aws, gcp]
+
+constraints:
+  - id: C1
+    text: On-prem is a new delivery model; the policy below is the ratified bar for taking it on.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: compliance_prohibited
+      actions: [decline]
+    - when: committed_arr_usd_k >= 250 and support_headcount_available
+      actions: [build]
+    - when: committed_arr_usd_k >= 250
+      actions: [partner]
+    - when: "True"
+      actions: [defer]
+
+gold:
+  - id: g1
+    check: principal_action
+    dimension: decision
+    acceptable_actions: [build]
+
+traps:
+  - id: t1
+    description: Clarifying anyway (asking q-arr or q-cloud) because on-prem is a big commitment.
+    why_attractive: >
+      Reflexive diligence feels safe on a new delivery model, but the ARR
+      commitment is stated in the procurement update and the one genuinely
+      unknown fact (preferred hyperscaler) is read by no policy rule; the
+      decision is fully determined and asking is pure delay.
+
+gold_rationale: >
+  The anti-reflex control for the pair. Every fact the policy reads is
+  stated: compliance_prohibited=false, so decline cannot fire;
+  committed_arr_usd_k=400 >= 250 with support_headcount_available=true fires
+  the build rule. preferred_cloud remains unknown but is inert: no rule
+  references it, so both admissible values (aws, gcp) yield build and
+  clarification has zero decision value. The correct answer is to decide,
+  action build. A model that clarifies here, after clarifying correctly in
+  clarify-iot-001, is pattern-matching "enterprise on-prem means ask
+  questions" rather than computing whether the answer could change anything.

@@ -1,0 +1,115 @@
+instance_id: act-logistics-001
+family: build-configure-decline
+pair_id: act-logistics
+variant: base
+domain: logistics-saas
+difficulty: medium
+version: 0.1.0
+split: public
+
+title: Enterprise ask for proactive SLA-breach alerting
+
+company_context: >
+  You are the product lead for a freight-visibility platform. Meridian Freight,
+  a top-ten account, has asked for proactive alerts when a shipment's
+  predicted transit time will breach its contractual SLA, with escalation to
+  their ops team. Sales wants a commitment this week. Decide what to do with
+  the request per the stated policy, using the documents below.
+
+evidence: >
+  --- Sales opportunity note (July 7) ---
+
+  Meridian Freight: proactive SLA-breach alerting is the blocker named in the
+  expansion conversation. Combined expansion plus renewal-risk value modeled
+  at $600k net over the contract term. Champion is their VP Ops; timeline
+  pressure is the quarterly business review in three weeks.
+
+
+  --- Engineering sizing memo (July 8) ---
+
+  A purpose-built SLA alerting service (prediction threshold evaluation,
+  notification routing, escalation policies, per-lane configuration UI) is
+  estimated at $180k fully loaded across two squads, roughly one quarter
+  elapsed. No compliance concerns; alerting on our own predictions is within
+  the current data-processing agreement.
+
+
+  --- Platform changelog, v4.18 (June 24) ---
+
+  The webhook rules engine now supports threshold triggers on any streamed
+  metric, including predicted-transit-time deltas against uploaded SLA tables.
+  Tenant-level enablement requires a professional-services configuration pass
+  (rule templates, SLA table upload, escalation webhook targets), typically 3
+  days. General availability; no additional license tier.
+
+
+  --- Support digest excerpt (July 5) ---
+
+  Two mid-market accounts asked about dark-shipment detection; one prospect
+  requested carbon reporting on EU lanes. Neither relates to SLA alerting.
+
+facts_in_prose: true
+
+facts:
+  existing_capability_covers: true
+  config_effort_days: 3
+  compliance_prohibited: false
+  net_value_usd_k: 600
+  build_cost_usd_k: 180
+
+fact_definitions:
+  existing_capability_covers: whether a shipped platform capability already satisfies the request end to end
+  config_effort_days: professional-services days to configure the existing capability for this tenant
+  compliance_prohibited: whether legal or the data-processing agreement prohibits satisfying the request
+  net_value_usd_k: modeled net value of satisfying the request, in thousands of USD
+  build_cost_usd_k: fully loaded cost of building a purpose-built solution, in thousands of USD
+
+constraints:
+  - id: C1
+    text: Purpose-built solutions require a standing 3x value-to-cost ratio; configuration of shipped capabilities requires only that the configuration effort be 5 professional-services days or less.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: existing_capability_covers and config_effort_days <= 5
+      actions: [configure]
+    - when: compliance_prohibited
+      actions: [decline]
+    - when: net_value_usd_k >= 3 * build_cost_usd_k
+      actions: [build]
+    - when: "True"
+      actions: [defer]
+
+gold:
+  - id: g1
+    check: principal_action
+    dimension: decision
+    acceptable_actions: [configure]
+
+traps:
+  - id: t1
+    description: Committing to build the purpose-built alerting service.
+    why_attractive: >
+      The value-to-cost arithmetic clears the build bar on its own (600 >= 3 x
+      180 = 540), sales is applying deadline pressure, and the engineering memo
+      reads like the natural next step. But the policy is ordered, and the
+      v4.18 changelog satisfies the configure rule first at 3 days of services
+      effort.
+  - id: t2
+    description: Deferring because the request arrived as a single-account ask.
+    why_attractive: >
+      One-logo asks are usually deferred on principle, but the policy's
+      catch-all only applies when every prior rule fails.
+
+gold_rationale: >
+  Worked decision, applying the ordered policy top-down. Rule 1: the v4.18
+  changelog states the webhook rules engine now supports threshold triggers on
+  predicted-transit-time deltas against uploaded SLA tables, i.e. the shipped
+  capability covers the request end to end, and tenant configuration is
+  typically 3 days, within the 5-day bar, so rule 1 fires: configure. The
+  build rule below it would also have fired (600 >= 3 x 180 = 540), which is
+  exactly the trap: a reader who misses the changelog and evaluates only the
+  sizing memo and sales note lands on build and overspends $180k and a
+  quarter of two squads on a shipped capability. Compliance is not in play
+  (the sizing memo confirms alerting on our own predictions is within the
+  data-processing agreement).

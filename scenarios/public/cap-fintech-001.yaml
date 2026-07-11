@@ -1,0 +1,166 @@
+instance_id: cap-fintech-001
+family: capacity-prioritization
+pair_id: cap-fintech
+variant: base
+domain: fintech-api-platform
+difficulty: medium
+version: 0.1.0
+split: public
+
+title: Q3 roadmap under a fixed platform-team budget
+
+company_context: >
+  You run product for a payments API platform serving mid-market SaaS companies.
+  The platform team has exactly 12 engineer-weeks of uncommitted capacity in Q3.
+  Six candidate items are on the table. Sales has been loud about card issuing
+  (the largest single revenue number attached to any item), and the enterprise
+  segment renewal wave lands at the end of Q3.
+
+evidence: >
+  Compliance memo (June 12): our PCI DSS Level 1 attestation is scheduled for
+  the Q4 audit window; until it completes we may not process, store, or
+  transmit primary account numbers outside the current tokenization boundary.
+  Any feature expanding that boundary is blocked until attestation.
+
+
+  Signed order form, Meridian HealthWorks (May 30): SSO with SCIM provisioning
+  is contractually committed for delivery within Q3 as a condition of their
+  3-year renewal.
+
+facts_in_prose: false
+
+fact_definitions:
+  eng_weeks: engineer-weeks of platform-team effort the item consumes
+  arr_protected_usd: annual recurring revenue the item protects or unlocks, per the FY26 revenue model
+  contract_committed: whether a signed customer contract commits this item for Q3 delivery
+  expands_pan_boundary: whether the item expands the PAN-handling boundary gated on the pending PCI Level 1 attestation
+
+constraints:
+  - id: C1
+    text: Platform-team capacity in Q3 is 12 engineer-weeks; no contractors, no borrowing from Q4.
+  - id: C2
+    text: Contractually committed Q3 deliverables must ship in Q3 (signed order forms are binding).
+  - id: C3
+    text: Until the PCI Level 1 attestation completes (Q4), no item may expand the PAN-handling boundary.
+
+success_criteria:
+  - id: S1
+    text: The Q3 plan must include at least one item that directly reduces enterprise integration friction ahead of the renewal wave.
+
+candidates:
+  - id: ledger-api
+    title: Double-entry ledger API (GA)
+    addresses: [S1]
+    facts:
+      eng_weeks: 5
+      arr_protected_usd: 900000
+      contract_committed: false
+      expands_pan_boundary: false
+  - id: card-issuing
+    title: Card issuing endpoints (beta)
+    facts:
+      eng_weeks: 6
+      arr_protected_usd: 1200000
+      contract_committed: false
+      expands_pan_boundary: true
+  - id: webhooks-v2
+    title: Webhooks v2 with ordered delivery
+    depends_on: [ledger-api]
+    facts:
+      eng_weeks: 3
+      arr_protected_usd: 350000
+      contract_committed: false
+      expands_pan_boundary: false
+  - id: sso-scim
+    title: SSO with SCIM provisioning
+    facts:
+      eng_weeks: 4
+      arr_protected_usd: 500000
+      contract_committed: true
+      expands_pan_boundary: false
+  - id: sandbox-env
+    title: Self-serve sandbox environments
+    addresses: [S1]
+    facts:
+      eng_weeks: 2
+      arr_protected_usd: 150000
+      contract_committed: false
+      expands_pan_boundary: false
+  - id: usage-dashboards
+    title: Customer usage dashboards
+    facts:
+      eng_weeks: 3
+      arr_protected_usd: 250000
+      contract_committed: false
+      expands_pan_boundary: false
+
+decision_spec:
+  kind: selection
+  action: build
+  capacity:
+    cost_fact: eng_weeks
+    budget: 12
+    unit: engineer-weeks
+  objective:
+    sense: maximize
+    value_fact: arr_protected_usd
+    unit: USD
+  gates:
+    - kind: mandatory_when
+      when: contract_committed
+      basis: C2
+    - kind: excluded_when
+      when: expands_pan_boundary
+      basis: C3
+    - kind: requires_dependencies
+      basis: C1
+    - kind: must_cover
+      criteria: [S1]
+      basis: C1
+
+gold:
+  - id: g1
+    check: principal_selection
+    dimension: decision
+    action: build
+    optimal_sets:
+      - [ledger-api, sso-scim, webhooks-v2]
+  - id: g2
+    check: sequence
+    dimension: sequencing
+  - id: g3
+    check: coverage
+    dimension: coverage
+    criteria:
+      S1: [ledger-api, sandbox-env]
+
+traps:
+  - id: t1
+    description: Selecting card-issuing because it carries the largest ARR number.
+    why_attractive: >
+      Highest single value (1.2M) and best value density (200k per engineer-week);
+      a greedy RICE-style ranking picks it first. The compliance memo excludes it
+      until Q4 (C3).
+  - id: t2
+    description: Selecting webhooks-v2 without ledger-api.
+    why_attractive: >
+      Good value density in isolation, but ordered delivery is built on the
+      ledger event stream; the dependency rule makes it infeasible alone.
+  - id: t3
+    description: Dropping sso-scim to free 4 weeks for higher-density items.
+    why_attractive: >
+      Its density (125k per engineer-week) is mid-pack, but the signed Meridian
+      order form makes it mandatory (C2).
+
+gold_rationale: >
+  Worked math. sso-scim is mandatory (contract_committed=true, C2), consuming 4
+  of 12 engineer-weeks and contributing 500k. card-issuing is excluded
+  (expands_pan_boundary=true, C3) despite the best density (1.2M / 6wk = 200k/wk).
+  With 8 weeks remaining over ledger-api (5wk, 900k), webhooks-v2 (3wk, 350k,
+  requires ledger-api), sandbox-env (2wk, 150k), usage-dashboards (3wk, 250k),
+  and the S1 coverage rule requiring ledger-api or sandbox-env, the best
+  feasible completions are: ledger-api + webhooks-v2 = 8wk, 1,250k (S1 via
+  ledger-api); ledger-api + usage-dashboards = 8wk, 1,150k; ledger-api +
+  sandbox-env = 7wk, 1,050k; sandbox-env + usage-dashboards + nothing = 5wk,
+  400k. Unique optimum is sso-scim + ledger-api + webhooks-v2 = 12wk,
+  1,750,000 USD. Sequencing: webhooks-v2 must follow ledger-api.

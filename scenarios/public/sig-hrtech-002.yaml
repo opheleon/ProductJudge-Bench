@@ -1,0 +1,247 @@
+instance_id: sig-hrtech-002
+family: signal-analysis
+pair_id: sig-hrtech
+variant: haystack
+domain: hrtech-saas
+difficulty: hard
+version: 0.1.0
+split: public
+
+title: Monthly feedback triage for a workforce-management platform (from raw documents)
+
+company_context: >
+  You own product for a workforce-management platform (scheduling, time
+  tracking, payroll export) serving 400 customers. The monthly triage meeting
+  is tomorrow. Support has pre-clustered the month's inbound feedback into five
+  themes, listed below, but this month the metrics dashboard is down: every
+  number you need lives in the raw documents. Label each theme per the stated
+  triage policy and decide whether the at-risk enterprise theme justifies
+  pulling an engineer off the committed roadmap this sprint.
+
+evidence: >
+  --- Support digest, week of July 6 ---
+
+  Payroll export crashes remain our highest-volume theme by raw tickets. After
+  deduplication, however, all reports over the 21-day window trace to exactly
+  1 customer account (Bellhaven Logistics), arriving through 1 channel only
+  (support tickets). Bellhaven holds 3% of ARR; roughly 2% of weekly active
+  seats touch export at their scale. Their CSM is handling escalation.
+
+
+  The SSO provisioning gaps theme is quieter but broader in the ways that
+  matter. Reports came in over a 60-day window from 3 distinct enterprise
+  accounts through 4 independent channels (support, two renewal calls, an NPS
+  verbatim, and a CSM note). Together those accounts hold 34% of ARR; about 6%
+  of weekly active seats sit behind the affected directories. The earliest of
+  those renewals closes in 90 days.
+
+
+  --- Product analytics note, July 8 ---
+
+  Mobile clock-in friction: 12 distinct accounts across a 45-day window,
+  reported via 5 independent channels. Exposure is high: 24% of weekly active
+  seats clock in from the mobile app, and the affected accounts hold 12% of
+  ARR. This lands squarely on the mobile-first frontline adoption pillar the
+  exec team ratified in May.
+
+
+  Dark mode: the perennial. 9 distinct accounts over a 120-day window through
+  3 channels; the requesting accounts hold 2% of ARR and about 5% of weekly
+  active seats have the display-preferences screen open in a given week. No
+  strategy pillar covers cosmetics this half.
+
+
+  --- Legal memo, July 3 (privileged) ---
+
+  EU works-council data-retention controls: legal has flagged this as a
+  regulatory obligation under the works-council agreements framework. Intake
+  so far: 2 accounts over a 14-day window through 2 channels (a support ticket
+  and one CSM note). The accounts hold 8% of ARR; roughly 3% of weekly active
+  seats fall under EU works-council scope. Not tied to any signed contract.
+
+
+  --- Sales channel note, July 9 ---
+
+  Aurora Foods asked (again) for a bespoke shift-bidding module during their
+  QBR. Logged for the record; their CSM set expectations that it is not on
+  the roadmap. Separately, two prospects mentioned a competitor's AI schedule
+  optimizer during discovery calls last week; neither is a customer.
+
+facts_in_prose: true
+
+facts:
+  top_risk_arr_pct: 34
+  top_risk_renewal_days: 90
+
+fact_definitions:
+  distinct_accounts: number of distinct customer accounts represented in the cluster after deduplication
+  independent_sources: number of independent intake channels (support, sales calls, NPS verbatims, CSM notes) reporting the theme
+  arr_pct: percentage of total ARR held by the accounts in the cluster
+  exposure_pct: percentage of weekly active seats exposed to the affected surface
+  window_days: length in days of the window containing the cluster's reports
+  compliance_flagged: whether legal has flagged the theme as a regulatory obligation
+  contract_flagged: whether the theme is tied to a signed contractual commitment
+  strategy_fit: whether the theme advances the current strategy (mobile-first frontline adoption)
+  top_risk_arr_pct: ARR percentage of the largest at-risk theme
+  top_risk_renewal_days: days until the earliest renewal among that theme's accounts
+
+constraints:
+  - id: C1
+    text: Committed roadmap items may be preempted only for themes that are both material and time-bound.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: top_risk_arr_pct >= 25 and top_risk_renewal_days <= 120
+      actions: [build]
+    - when: "True"
+      actions: [defer]
+
+label_rules:
+  signal_type:
+    - when: distinct_accounts <= 1 or independent_sources <= 1
+      label: duplicate-noise
+    - when: distinct_accounts <= 3 and arr_pct >= 20
+      label: concentrated-account-risk
+    - when: distinct_accounts >= 8 and exposure_pct >= 15
+      label: broad-trend
+    - when: "True"
+      label: isolated-request
+  confidence:
+    - when: independent_sources >= 3 and window_days <= 90
+      label: sufficient
+    - when: "True"
+      label: insufficient
+  materiality:
+    - when: compliance_flagged
+      label: compliance
+    - when: contract_flagged
+      label: contractual
+    - when: arr_pct >= 20
+      label: revenue
+    - when: strategy_fit
+      label: strategic
+    - when: "True"
+      label: low
+
+clusters:
+  - id: cl-export-crash
+    title: Payroll export crashes on large runs (highest raw ticket volume)
+    facts:
+      distinct_accounts: 1
+      independent_sources: 1
+      arr_pct: 3
+      exposure_pct: 2
+      window_days: 21
+      compliance_flagged: false
+      contract_flagged: false
+      strategy_fit: false
+  - id: cl-sso-provisioning
+    title: SSO provisioning gaps for enterprise directories
+    facts:
+      distinct_accounts: 3
+      independent_sources: 4
+      arr_pct: 34
+      exposure_pct: 6
+      window_days: 60
+      compliance_flagged: false
+      contract_flagged: false
+      strategy_fit: false
+  - id: cl-mobile-clockin
+    title: Mobile clock-in friction for frontline workers
+    facts:
+      distinct_accounts: 12
+      independent_sources: 5
+      arr_pct: 12
+      exposure_pct: 24
+      window_days: 45
+      compliance_flagged: false
+      contract_flagged: false
+      strategy_fit: true
+  - id: cl-gdpr-retention
+    title: Data-retention controls requested for EU works councils
+    facts:
+      distinct_accounts: 2
+      independent_sources: 2
+      arr_pct: 8
+      exposure_pct: 3
+      window_days: 14
+      compliance_flagged: true
+      contract_flagged: false
+      strategy_fit: false
+  - id: cl-dark-mode
+    title: Dark mode requests
+    facts:
+      distinct_accounts: 9
+      independent_sources: 3
+      arr_pct: 2
+      exposure_pct: 5
+      window_days: 120
+      compliance_flagged: false
+      contract_flagged: false
+      strategy_fit: false
+
+gold:
+  - id: g1
+    check: principal_action
+    dimension: decision
+    acceptable_actions: [build]
+  - id: g2
+    check: cluster_labels
+    dimension: signal_analysis
+    expected:
+      cl-export-crash:
+        signal_type: duplicate-noise
+        confidence: insufficient
+        materiality: low
+      cl-sso-provisioning:
+        signal_type: concentrated-account-risk
+        confidence: sufficient
+        materiality: revenue
+      cl-mobile-clockin:
+        signal_type: broad-trend
+        confidence: sufficient
+        materiality: strategic
+      cl-gdpr-retention:
+        signal_type: isolated-request
+        confidence: insufficient
+        materiality: compliance
+      cl-dark-mode:
+        signal_type: isolated-request
+        confidence: insufficient
+        materiality: low
+
+traps:
+  - id: t1
+    description: Labeling cl-export-crash a broad trend because it dominates the support digest.
+    why_attractive: >
+      It is the loudest item in the documents, but the digest itself states it
+      deduplicates to 1 account and 1 channel.
+  - id: t2
+    description: Treating the Aurora Foods QBR ask or the prospect chatter as a sixth theme.
+    why_attractive: >
+      Both read like signals; neither belongs to any listed cluster, and
+      prospects are not customers. Pure decoy material.
+  - id: t3
+    description: Labeling cl-dark-mode a broad trend off nine distinct accounts.
+    why_attractive: >
+      Nine accounts feels like a trend, but exposure is 5% (below the 15% rule)
+      and the 120-day window fails the confidence recency rule.
+
+gold_rationale: >
+  Identical decision content to sig-hrtech-001; only the presentation changes,
+  from fact tables to raw documents with decoys. Worked labels, top-down.
+  cl-export-crash: 1 account fires duplicate-noise; 1 source is insufficient;
+  3% ARR, no flags: low. cl-sso-provisioning: 3 accounts at 34% ARR fires
+  concentrated-account-risk; 4 sources in 60 days is sufficient; 34% >= 20%
+  gives revenue. cl-mobile-clockin: 12 accounts at 24% exposure fires
+  broad-trend; 5 sources in 45 days is sufficient; 12% ARR fails revenue,
+  strategy pillar noted in the analytics memo gives strategic.
+  cl-gdpr-retention: 2 accounts and 2 sources escapes noise, 8% ARR fails
+  concentrated, 2 accounts fails broad-trend: isolated-request; 2 sources is
+  insufficient; the legal memo's regulatory flag fires compliance first.
+  cl-dark-mode: 9 accounts but 5% exposure: isolated-request; 120-day window
+  fails recency: insufficient; 2% ARR, no flags: low. Principal decision: the
+  digest states the SSO theme holds 34% of ARR with the earliest renewal in
+  90 days; 34 >= 25 and 90 <= 120 fires build. The Aurora ask and prospect
+  chatter map to no cluster and change nothing.

@@ -1,0 +1,201 @@
+instance_id: sig-hrtech-001
+family: signal-analysis
+pair_id: sig-hrtech
+variant: base
+domain: hrtech-saas
+difficulty: medium
+version: 0.1.0
+split: public
+
+title: Monthly feedback triage for a workforce-management platform
+
+company_context: >
+  You own product for a workforce-management platform (scheduling, time
+  tracking, payroll export) serving 400 customers. The monthly triage meeting
+  is tomorrow. Support has pre-clustered the month's inbound feedback into five
+  themes; your job is to label each theme per the stated triage policy and
+  decide whether the at-risk enterprise theme justifies pulling an engineer off
+  the committed roadmap this sprint.
+
+evidence: >
+  CS lead note: the loudest theme by raw ticket count is the export crash, but
+  every ticket traces back to a single logo. The SSO provisioning gaps came up
+  on renewal calls; the affected accounts renew within the quarter.
+
+facts_in_prose: false
+
+facts:
+  top_risk_arr_pct: 34
+  top_risk_renewal_days: 90
+
+fact_definitions:
+  distinct_accounts: number of distinct customer accounts represented in the cluster after deduplication
+  independent_sources: number of independent intake channels (support, sales calls, NPS verbatims, CSM notes) reporting the theme
+  arr_pct: percentage of total ARR held by the accounts in the cluster
+  exposure_pct: percentage of weekly active seats exposed to the affected surface
+  window_days: length in days of the window containing the cluster's reports
+  compliance_flagged: whether legal has flagged the theme as a regulatory obligation
+  contract_flagged: whether the theme is tied to a signed contractual commitment
+  strategy_fit: whether the theme advances the current strategy (mobile-first frontline adoption)
+  top_risk_arr_pct: ARR percentage of the largest at-risk theme
+  top_risk_renewal_days: days until the earliest renewal among that theme's accounts
+
+constraints:
+  - id: C1
+    text: Committed roadmap items may be preempted only for themes that are both material and time-bound.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: top_risk_arr_pct >= 25 and top_risk_renewal_days <= 120
+      actions: [build]
+    - when: "True"
+      actions: [defer]
+
+label_rules:
+  signal_type:
+    - when: distinct_accounts <= 1 or independent_sources <= 1
+      label: duplicate-noise
+    - when: distinct_accounts <= 3 and arr_pct >= 20
+      label: concentrated-account-risk
+    - when: distinct_accounts >= 8 and exposure_pct >= 15
+      label: broad-trend
+    - when: "True"
+      label: isolated-request
+  confidence:
+    - when: independent_sources >= 3 and window_days <= 90
+      label: sufficient
+    - when: "True"
+      label: insufficient
+  materiality:
+    - when: compliance_flagged
+      label: compliance
+    - when: contract_flagged
+      label: contractual
+    - when: arr_pct >= 20
+      label: revenue
+    - when: strategy_fit
+      label: strategic
+    - when: "True"
+      label: low
+
+clusters:
+  - id: cl-export-crash
+    title: Payroll export crashes on large runs (highest raw ticket volume)
+    facts:
+      distinct_accounts: 1
+      independent_sources: 1
+      arr_pct: 3
+      exposure_pct: 2
+      window_days: 21
+      compliance_flagged: false
+      contract_flagged: false
+      strategy_fit: false
+  - id: cl-sso-provisioning
+    title: SSO provisioning gaps for enterprise directories
+    facts:
+      distinct_accounts: 3
+      independent_sources: 4
+      arr_pct: 34
+      exposure_pct: 6
+      window_days: 60
+      compliance_flagged: false
+      contract_flagged: false
+      strategy_fit: false
+  - id: cl-mobile-clockin
+    title: Mobile clock-in friction for frontline workers
+    facts:
+      distinct_accounts: 12
+      independent_sources: 5
+      arr_pct: 12
+      exposure_pct: 24
+      window_days: 45
+      compliance_flagged: false
+      contract_flagged: false
+      strategy_fit: true
+  - id: cl-gdpr-retention
+    title: Data-retention controls requested for EU works councils
+    facts:
+      distinct_accounts: 2
+      independent_sources: 2
+      arr_pct: 8
+      exposure_pct: 3
+      window_days: 14
+      compliance_flagged: true
+      contract_flagged: false
+      strategy_fit: false
+  - id: cl-dark-mode
+    title: Dark mode requests
+    facts:
+      distinct_accounts: 9
+      independent_sources: 3
+      arr_pct: 2
+      exposure_pct: 5
+      window_days: 120
+      compliance_flagged: false
+      contract_flagged: false
+      strategy_fit: false
+
+gold:
+  - id: g1
+    check: principal_action
+    dimension: decision
+    acceptable_actions: [build]
+  - id: g2
+    check: cluster_labels
+    dimension: signal_analysis
+    expected:
+      cl-export-crash:
+        signal_type: duplicate-noise
+        confidence: insufficient
+        materiality: low
+      cl-sso-provisioning:
+        signal_type: concentrated-account-risk
+        confidence: sufficient
+        materiality: revenue
+      cl-mobile-clockin:
+        signal_type: broad-trend
+        confidence: sufficient
+        materiality: strategic
+      cl-gdpr-retention:
+        signal_type: isolated-request
+        confidence: insufficient
+        materiality: compliance
+      cl-dark-mode:
+        signal_type: isolated-request
+        confidence: insufficient
+        materiality: low
+
+traps:
+  - id: t1
+    description: Labeling cl-export-crash a broad trend because it has the most tickets.
+    why_attractive: >
+      Raw volume is the loudest signal in the corpus, but every ticket
+      deduplicates to one account and one channel; the policy's first
+      signal_type rule fires.
+  - id: t2
+    description: Labeling cl-dark-mode a broad trend off nine distinct accounts.
+    why_attractive: >
+      Nine accounts feels like a trend, but exposure is 5% (below the 15%
+      denominator rule) and the 120-day window fails the confidence recency rule.
+  - id: t3
+    description: Labeling cl-sso-provisioning materiality as contractual.
+    why_attractive: >
+      Renewal-call pressure reads like a contractual obligation, but no signed
+      commitment exists; the ARR rule (34% >= 20%) makes it revenue.
+
+gold_rationale: >
+  Worked labels, applying each ordered rule list top-down. cl-export-crash:
+  distinct_accounts=1 fires rule 1 (duplicate-noise); 1 source fails the
+  3-source confidence rule (insufficient); no flags and 3% ARR gives low.
+  cl-sso-provisioning: 3 accounts and 34% ARR fires concentrated-account-risk;
+  4 sources within 60 days is sufficient; 34% >= 20% gives revenue.
+  cl-mobile-clockin: 12 accounts and 24% exposure fires broad-trend; 5 sources
+  in 45 days is sufficient; 12% ARR fails the revenue rule and strategy_fit
+  gives strategic. cl-gdpr-retention: 2 accounts, 2 sources escapes noise; 8%
+  ARR fails concentrated; 2 accounts fails broad-trend, so isolated-request;
+  2 sources is insufficient; compliance_flagged fires compliance first.
+  cl-dark-mode: 9 accounts but 5% exposure fails broad-trend (isolated-request);
+  window 120 > 90 fails recency (insufficient); 2% ARR, no flags, no fit: low.
+  Principal decision: top_risk_arr_pct=34 >= 25 and top_risk_renewal_days=90
+  <= 120, so the first action rule fires: build.

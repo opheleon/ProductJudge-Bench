@@ -218,11 +218,18 @@ def validate_scenario(scenario: Scenario) -> list[str]:
                 err(f"unknown fact {u.fact!r} renders a value into the prompt")
 
     if scenario.facts_in_prose:
-        for holder in [*scenario.candidates, *scenario.clusters]:
-            for name, value in holder.facts.items():
+        fact_sources: list[tuple[str, dict]] = [
+            ("facts", scenario.facts),
+            *[(c.id, c.facts) for c in scenario.candidates],
+            *[(c.id, c.facts) for c in scenario.clusters],
+        ]
+        for holder_id, holder_facts in fact_sources:
+            for name, value in holder_facts.items():
+                if isinstance(value, bool):
+                    continue  # booleans are expressed semantically in prose
                 if _fmt_value(value) not in scenario.evidence:
                     err(
-                        f"facts_in_prose: {holder.id}.{name}={_fmt_value(value)} "
+                        f"facts_in_prose: {holder_id}.{name}={_fmt_value(value)} "
                         f"does not appear in the evidence text"
                     )
 

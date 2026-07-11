@@ -1,0 +1,111 @@
+instance_id: clarify-iot-001
+family: clarify-vs-decide
+pair_id: clarify-iot
+variant: base
+domain: iot-platform
+difficulty: medium
+version: 0.1.0
+split: public
+
+title: Enterprise prospect demands on-prem deployment
+
+company_context: >
+  You are the product lead for a cloud IoT fleet-management platform.
+  Northfield Grid, a utility prospect, says they will only buy if the
+  platform can run on-premises inside their operations network. Your team has
+  never shipped on-prem. The account executive wants an answer for the
+  pursuit review on Thursday. Apply the stated policy; if a fact the policy
+  needs is not stated anywhere, use the clarification menu rather than
+  guessing.
+
+evidence: >
+  Solution-engineering note: Northfield's operations network is air-gapped;
+  deployment would be their standard six-month vendor onboarding, and their
+  team confirmed a 6-month timeline works on their side. Legal reviewed the
+  utility-sector data-handling terms and found no prohibition on an on-prem
+  offering. Staffing: the platform group confirmed a dedicated support
+  rotation could be stood up for a deployed appliance this fiscal year. The
+  AE has not yet gotten Northfield to name the contract value they would
+  commit to; procurement only said "sized to the pilot fleet, then expanded."
+
+facts_in_prose: false
+
+facts:
+  compliance_prohibited: false
+  support_headcount_available: true
+  deployment_timeline_months: 6
+
+fact_definitions:
+  compliance_prohibited: whether legal prohibits offering on-prem deployment in this sector
+  support_headcount_available: whether a dedicated support rotation can be staffed for an on-prem appliance this fiscal year
+  deployment_timeline_months: the customer's stated onboarding timeline in months
+  committed_arr_usd_k: annual recurring revenue, in thousands of USD, the customer will commit contractually for the on-prem offering
+  preferred_cloud: which hyperscaler the customer standardizes on for adjacent workloads
+
+questions:
+  - id: q-arr
+    text: What ARR will Northfield commit contractually for the on-prem offering?
+    fact: committed_arr_usd_k
+  - id: q-cloud
+    text: Which hyperscaler does Northfield standardize on for adjacent workloads?
+    fact: preferred_cloud
+  - id: q-timeline
+    text: What onboarding timeline does Northfield expect?
+    fact: deployment_timeline_months
+
+unknowns:
+  - fact: committed_arr_usd_k
+    admissible_values: [120, 400]
+  - fact: preferred_cloud
+    admissible_values: [aws, gcp]
+
+constraints:
+  - id: C1
+    text: On-prem is a new delivery model; the policy below is the ratified bar for taking it on.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: compliance_prohibited
+      actions: [decline]
+    - when: committed_arr_usd_k >= 250 and support_headcount_available
+      actions: [build]
+    - when: committed_arr_usd_k >= 250
+      actions: [partner]
+    - when: "True"
+      actions: [defer]
+
+gold:
+  - id: g1
+    check: principal_clarify
+    dimension: clarification
+    required_questions: [q-arr]
+    allowed_questions: [q-arr, q-cloud]
+
+traps:
+  - id: t1
+    description: Deciding to build because compliance and staffing both cleared.
+    why_attractive: >
+      Every stated fact points green, and pursuit-review pressure rewards a
+      confident answer. But the policy's build bar is committed ARR of 250k or
+      more, and no ARR commitment is stated anywhere; plausible values on
+      either side of 250k produce different actions (defer vs build).
+  - id: t2
+    description: Asking about the deployment timeline.
+    why_attractive: >
+      Timeline is the classic on-prem diligence question, but the customer's
+      6-month timeline is already stated in the solution-engineering note;
+      asking signals the documents were not read.
+
+gold_rationale: >
+  Value-of-information analysis under the stated policy. Stated facts:
+  compliance_prohibited=false (decline rule cannot fire),
+  support_headcount_available=true, timeline 6 months. The unresolved fact
+  the policy reads is committed_arr_usd_k: at 120 the second and third rules
+  fail and the catch-all gives defer; at 400 the second rule fires and gives
+  build. Different admissible values produce different optimal actions, so
+  the correct move is to clarify, and q-arr is required. preferred_cloud is
+  genuinely unknown but inert: no policy rule references it, so both
+  admissible values yield the same action and q-cloud is permitted but not
+  required. q-timeline asks about a stated fact and is disallowed. Deciding
+  either way without the ARR answer is a coin flip dressed as a decision.

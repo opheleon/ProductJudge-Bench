@@ -1,0 +1,92 @@
+instance_id: ab-market-001
+family: ab-readout
+pair_id: ab-market
+variant: base
+domain: b2c-marketplace
+difficulty: medium
+version: 0.1.0
+split: public
+
+title: Checkout redesign experiment readout (raw figures)
+
+company_context: >
+  You own conversion for a consumer marketplace. The checkout redesign A/B
+  test just hit its scheduled end date and the growth team wants the readout
+  decision today. The experiment was pre-registered with the decision rule
+  below; the numbers arrive raw from the events pipeline.
+
+evidence: >
+  Events pipeline extract, experiment CHK-214, full run. Arm A (control):
+  8400 sessions entered checkout, 512 completed purchases, 101 orders
+  refunded within 7 days. Arm B (redesign): 8250 sessions entered checkout,
+  621 completed purchases, 118 orders refunded within 7 days. Growth channel
+  chatter: "B is +109 purchases, refunds only +17, obvious ship." A data
+  scientist on leave left a sticky note: "check the refund guardrail per
+  protocol, not raw counts."
+
+facts_in_prose: false
+
+facts:
+  sample_a: 8400
+  conversions_a: 512
+  refunds_a: 101
+  sample_b: 8250
+  conversions_b: 621
+  refunds_b: 118
+
+fact_definitions:
+  sample_a: sessions entering checkout in arm A (control)
+  conversions_a: completed purchases in arm A
+  refunds_a: arm A orders refunded within 7 days
+  sample_b: sessions entering checkout in arm B (redesign)
+  conversions_b: completed purchases in arm B
+  refunds_b: arm B orders refunded within 7 days
+
+constraints:
+  - id: C1
+    text: The decision rule was pre-registered; the readout must apply it as written, in order.
+
+decision_spec:
+  kind: slot_decision
+  action: experiment
+  slot: ab_decision
+  labels: [ship, hold, extend]
+  rules:
+    - when: sample_a < 8000 or sample_b < 8000
+      label: extend
+    - when: (refunds_b / sample_b - refunds_a / sample_a) * 100 > 0.3
+      label: hold
+    - when: (conversions_b / sample_b - conversions_a / sample_a) * 100 >= 1.2
+      label: ship
+    - when: "True"
+      label: hold
+
+gold:
+  - id: g1
+    check: principal_slot
+    dimension: decision
+    action: experiment
+    slot: ab_decision
+    acceptable: [ship]
+
+traps:
+  - id: t1
+    description: Holding because refunds rose from 101 to 118 raw.
+    why_attractive: >
+      Plus 17 refunds sounds like a regression, but the guardrail is a rate
+      delta in percentage points, 118/8250 minus 101/8400 = 0.228pp, under
+      the 0.3pp bar.
+  - id: t2
+    description: Shipping on the raw purchase delta (+109) without checking power or the guardrail order.
+    why_attractive: >
+      The headline number is right, but the pre-registered rule requires the
+      power check and refund guardrail to be evaluated first; skipping them
+      is only accidentally correct here, and the paired scenario punishes it.
+
+gold_rationale: >
+  Worked math, applying the pre-registered ordered rules. Power: both arms
+  clear the 8000-session floor (8400 and 8250), so extend does not fire.
+  Refund guardrail: arm B rate 118/8250 = 1.4303%, arm A rate 101/8400 =
+  1.2024%, delta 0.2279pp, not greater than 0.3pp, so hold does not fire.
+  Conversion: arm B 621/8250 = 7.5273%, arm A 512/8400 = 6.0952%, delta
+  1.4320pp >= 1.2pp, so the ship rule fires. Readout: ship.

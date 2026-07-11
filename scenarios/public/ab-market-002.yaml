@@ -1,0 +1,79 @@
+instance_id: ab-market-002
+family: ab-readout
+pair_id: ab-market
+variant: precomputed
+domain: b2c-marketplace
+difficulty: easy
+version: 0.1.0
+split: public
+
+title: Checkout redesign experiment readout (analyst-prepared metrics)
+
+company_context: >
+  You own conversion for a consumer marketplace. The checkout redesign A/B
+  test just hit its scheduled end date and the growth team wants the readout
+  decision today. The experiment was pre-registered with the decision rule
+  below; this time the analyst has already computed the protocol metrics.
+
+evidence: >
+  Analyst summary, experiment CHK-214, full run. Arm A: 8400 sessions; arm B:
+  8250 sessions. Conversion-rate delta (B minus A): 1.43 percentage points.
+  Refund-rate delta within 7 days (B minus A): 0.23 percentage points. All
+  figures computed per the pre-registered protocol definitions.
+
+facts_in_prose: false
+
+facts:
+  sample_a: 8400
+  sample_b: 8250
+  conversion_delta_pp: 1.43
+  refund_delta_pp: 0.23
+
+fact_definitions:
+  sample_a: sessions entering checkout in arm A (control)
+  sample_b: sessions entering checkout in arm B (redesign)
+  conversion_delta_pp: conversion-rate delta, arm B minus arm A, in percentage points
+  refund_delta_pp: 7-day refund-rate delta, arm B minus arm A, in percentage points
+
+constraints:
+  - id: C1
+    text: The decision rule was pre-registered; the readout must apply it as written, in order.
+
+decision_spec:
+  kind: slot_decision
+  action: experiment
+  slot: ab_decision
+  labels: [ship, hold, extend]
+  rules:
+    - when: sample_a < 8000 or sample_b < 8000
+      label: extend
+    - when: refund_delta_pp > 0.3
+      label: hold
+    - when: conversion_delta_pp >= 1.2
+      label: ship
+    - when: "True"
+      label: hold
+
+gold:
+  - id: g1
+    check: principal_slot
+    dimension: decision
+    action: experiment
+    slot: ab_decision
+    acceptable: [ship]
+
+traps:
+  - id: t1
+    description: Holding out of guardrail caution because a refund delta exists at all.
+    why_attractive: >
+      A positive refund delta invites a reflexive hold, but the pre-registered
+      bar is 0.3pp and the measured delta is 0.23pp.
+
+gold_rationale: >
+  Decision-identical to ab-market-001; the arithmetic pair isolates
+  calculation from judgment by handing the model the protocol metrics
+  precomputed. Power: 8400 and 8250 both clear the 8000 floor, extend does
+  not fire. Guardrail: 0.23pp is not greater than 0.3pp, hold does not fire.
+  Conversion: 1.43pp >= 1.2pp fires ship. Readout: ship. A model that ships
+  here but fails ab-market-001 is dropping the calculation, not the judgment;
+  a model that fails both is dropping the protocol itself.

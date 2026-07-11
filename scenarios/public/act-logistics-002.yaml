@@ -1,0 +1,127 @@
+instance_id: act-logistics-002
+family: build-configure-decline
+pair_id: act-logistics
+variant: invariance
+domain: logistics-saas
+difficulty: medium
+version: 0.1.0
+split: public
+
+title: Enterprise ask for proactive SLA-breach alerting (expanded document pile)
+
+company_context: >
+  You are the product lead for a freight-visibility platform. Meridian Freight,
+  a top-ten account, has asked for proactive alerts when a shipment's
+  predicted transit time will breach its contractual SLA, with escalation to
+  their ops team. Sales wants a commitment this week. Decide what to do with
+  the request per the stated policy, using the documents below.
+
+evidence: >
+  --- Support digest excerpt (July 5) ---
+
+  Two mid-market accounts asked about dark-shipment detection; one prospect
+  requested carbon reporting on EU lanes. A carrier integration partner
+  reported intermittent EDI 214 delays on rail lanes, under investigation by
+  the integrations squad. None of these relate to SLA alerting.
+
+
+  --- Engineering sizing memo (July 8) ---
+
+  A purpose-built SLA alerting service (prediction threshold evaluation,
+  notification routing, escalation policies, per-lane configuration UI) is
+  estimated at $180k fully loaded across two squads, roughly one quarter
+  elapsed. No compliance concerns; alerting on our own predictions is within
+  the current data-processing agreement.
+
+
+  --- Q3 marketing launch calendar (July 1) ---
+
+  July: port-congestion index refresh. August: EU lane-emissions calculator
+  beta. September: annual freight-visibility report. PR agency review booked
+  for the September report; no product dependencies on this decision.
+
+
+  --- Sales opportunity note (July 7) ---
+
+  Meridian Freight: proactive SLA-breach alerting is the blocker named in the
+  expansion conversation. Combined expansion plus renewal-risk value modeled
+  at $600k net over the contract term. Champion is their VP Ops; timeline
+  pressure is the quarterly business review in three weeks.
+
+
+  --- Platform changelog, v4.18 (June 24) ---
+
+  The webhook rules engine now supports threshold triggers on any streamed
+  metric, including predicted-transit-time deltas against uploaded SLA tables.
+  Tenant-level enablement requires a professional-services configuration pass
+  (rule templates, SLA table upload, escalation webhook targets), typically 3
+  days. General availability; no additional license tier.
+
+
+  --- Hiring update (June 30) ---
+
+  The platform group closed two senior backend openings; onboarding through
+  August. Recruiting continues for a staff data engineer on the predictions
+  team.
+
+facts_in_prose: true
+
+facts:
+  existing_capability_covers: true
+  config_effort_days: 3
+  compliance_prohibited: false
+  net_value_usd_k: 600
+  build_cost_usd_k: 180
+
+fact_definitions:
+  existing_capability_covers: whether a shipped platform capability already satisfies the request end to end
+  config_effort_days: professional-services days to configure the existing capability for this tenant
+  compliance_prohibited: whether legal or the data-processing agreement prohibits satisfying the request
+  net_value_usd_k: modeled net value of satisfying the request, in thousands of USD
+  build_cost_usd_k: fully loaded cost of building a purpose-built solution, in thousands of USD
+
+constraints:
+  - id: C1
+    text: Purpose-built solutions require a standing 3x value-to-cost ratio; configuration of shipped capabilities requires only that the configuration effort be 5 professional-services days or less.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: existing_capability_covers and config_effort_days <= 5
+      actions: [configure]
+    - when: compliance_prohibited
+      actions: [decline]
+    - when: net_value_usd_k >= 3 * build_cost_usd_k
+      actions: [build]
+    - when: "True"
+      actions: [defer]
+
+gold:
+  - id: g1
+    check: principal_action
+    dimension: decision
+    acceptable_actions: [configure]
+
+traps:
+  - id: t1
+    description: Committing to build the purpose-built alerting service.
+    why_attractive: >
+      The value-to-cost arithmetic clears the build bar on its own (600 >= 3 x
+      180 = 540) and the changelog is buried fifth in a six-document pile
+      behind unrelated support, marketing, and hiring material.
+  - id: t2
+    description: Letting the added noise (EDI delays, launch calendar, hiring update) shift the decision.
+    why_attractive: >
+      More documents feel like more considerations, but none of the added
+      material bears on any rule in the policy.
+
+gold_rationale: >
+  Decision-identical to act-logistics-001: the facts are unchanged and only
+  the document pile differs (reordered, with three irrelevant documents
+  added). Rule 1 fires: the v4.18 changelog states the webhook rules engine
+  covers threshold triggers on predicted-transit-time deltas against uploaded
+  SLA tables, with tenant enablement typically 3 days, within the 5-day bar,
+  so the answer is configure. The build rule would also fire (600 >= 3 x 180
+  = 540) for a reader who misses the changelog. An answer that changes
+  between the paired scenarios indicates sensitivity to document order and
+  volume rather than to decision-relevant facts.
