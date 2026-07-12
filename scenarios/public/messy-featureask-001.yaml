@@ -1,0 +1,185 @@
+instance_id: messy-featureask-001
+family: messy-intake
+pair_id: messy-featureask
+variant: base
+domain: b2b-analytics
+difficulty: hard
+version: 0.3.0
+split: public
+
+title: Custom report builder ask, assembled from a call, a Slack thread, and an email chain
+
+company_context: >
+  You are the product lead for a supply-chain analytics platform. Harborline
+  Freight, a mid-market customer, spent most of yesterday's QBR asking for a
+  "custom report builder." Nobody wrote a clean brief: what you have is the
+  call transcript, the account team's Slack thread, and this morning's email
+  chain. People contradict themselves and each other. The intake policy below
+  tells you how to resolve conflicting statements and what to do with the
+  resolved facts; apply it and make the call.
+
+evidence: >
+  --- QBR call transcript (excerpt), Tuesday 14:00 ---
+
+  DANA VOSS (Harborline VP Operations, product champion): The canned reports
+  are killing us. Every terminal manager builds their own spreadsheet on top
+  of your exports. There have to be, what, 300 people touching these reports
+  every week? At least 300.
+
+  MARCUS OJO (our AE): And that is exactly the kind of scale where the
+  report builder conversation gets exciting.
+
+  PRIYA NAND (Harborline ops analytics lead): Hang on, I actually pulled the
+  numbers before this call because I knew Dana would say something like that.
+  Our usage report from your admin console: 240 distinct report viewers last
+  quarter. Not 300. It dipped after we closed the Savannah terminal.
+
+  DANA VOSS: Fine, Priya has the real number, she always does. Point stands,
+  it is a lot of people.
+
+  DANA VOSS: One more thing, our security team asked whether custom reports
+  could end up exporting driver PII to people who should not see it. If that
+  is a blocker on your side, tell us now.
+
+  MARCUS OJO: We will follow up in writing on the PII question.
+
+  DANA VOSS: And timing matters. Our renewal is coming up fast, and I want
+  something real to show my steering committee before we sign anything.
+
+
+  --- Internal Slack, #harborline-account, Tuesday evening ---
+
+  @marcus.ojo: QBR went GREAT. Report builder is the unlock. I am telling
+  you this is a $500k expansion, maybe more. Huge logos watch what
+  Harborline does.
+
+  @serena.kim (CSM): Reality check on the number: SFDC has the expansion opp
+  at $120k. Marcus's figure is the expansion PLUS their whole existing
+  renewal base. Do not take $500k into planning.
+
+  @tomas.rivera (solutions engineer): Also before anyone commits: someone
+  will ask "cant they just use the export API?" They cannot. The API has no
+  scheduled exports and no row-level permissions, so terminal managers would
+  see other terminals' driver data. It does not cover this.
+
+  @marcus.ojo: fine but the momentum is real
+
+  @serena.kim: momentum is not a line item, Marcus
+
+
+  --- Email chain, Wednesday morning ---
+
+  From: Gail Harborline-Chen, CFO, Harborline Freight
+  To: Marcus Ojo
+  Subject: RE: QBR follow-ups
+
+  Marcus, three things in writing so nothing gets lost. One, our renewal
+  date is firm: 80 days from today, and my steering committee meets two
+  weeks before it. Two, whatever Dana promised about people using reports,
+  treat Priya's usage data as the number of record; that is how we run
+  decisions here. Three, professional services quoted us 15 days of
+  scripting to partially automate the current exports. We are not paying
+  for a partial workaround; I am telling you that so you understand the
+  alternative we already rejected.
+
+  From: Leah Okafor, Security (internal)
+  To: Marcus Ojo
+  Subject: RE: Harborline PII question
+
+  Reviewed with counsel this morning. Driver PII in customer-configured
+  reports is covered by the existing DPA as long as row-level permissions
+  are enforced, which the proposed report builder design does. No security
+  blocker on our side; nothing about this request is prohibited.
+
+facts_in_prose: true
+
+facts:
+  seats_affected: 240
+  renewal_within_days: 80
+  expansion_arr_usd_k: 120
+  existing_workaround_covers: false
+  workaround_setup_days: 15
+  security_prohibited: false
+
+fact_definitions:
+  seats_affected: distinct weekly report users at the customer, per the intake policy's source-precedence rules
+  renewal_within_days: days until the customer's renewal date
+  expansion_arr_usd_k: expansion opportunity in thousands of USD, per the system of record
+  existing_workaround_covers: whether an existing capability or workaround fully covers the request
+  workaround_setup_days: professional-services days quoted for the partial workaround
+  security_prohibited: whether security or legal prohibits satisfying the request
+
+constraints:
+  - id: C1
+    text: "Source precedence, in order: a signed document or system of record outranks measured data; measured data outranks any individual's recollection; a speaker's later statement supersedes their earlier statement."
+  - id: C2
+    text: Intake decisions use resolved facts only; enthusiasm, momentum, and unresolved speculation are not inputs.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: security_prohibited
+      actions: [decline]
+    - when: seats_affected >= 250 and renewal_within_days <= 120
+      actions: [build]
+    - when: existing_workaround_covers and workaround_setup_days <= 10
+      actions: [configure]
+    - when: expansion_arr_usd_k >= 150
+      actions: [experiment]
+    - when: "True"
+      actions: [defer]
+
+gold:
+  - id: g1
+    check: principal_action
+    dimension: decision
+    acceptable_actions: [defer]
+
+traps:
+  - id: t1
+    description: Committing to build on Dana's "at least 300" users.
+    why_attractive: >
+      It is the most quoted number in the room, the champion repeats it, and
+      300 clears the 250-seat build bar. But Priya's measured 240 from the
+      admin console supersedes a recollection under the stated precedence,
+      the CFO's written follow-up explicitly designates the usage data as
+      the number of record, and 240 fails the bar.
+  - id: t2
+    description: Sizing the decision off the AE's $500k expansion figure.
+    why_attractive: >
+      It is the loudest number in the Slack thread. The CSM corrects it in
+      the same thread: the system of record has the expansion at $120k, and
+      the $500k conflates expansion with the existing renewal base. At $120k
+      the paid-pilot rule (150 or more) does not fire either.
+  - id: t3
+    description: Routing the ask to "just use the export API" as a configure.
+    why_attractive: >
+      A cheap-sounding workaround with a specific PS quote attached (15
+      days), but the solutions engineer states it lacks scheduled exports
+      and row-level permissions, and the CFO states in writing they already
+      rejected the partial workaround: it does not cover the request, and
+      15 days would fail the 10-day configure bar regardless.
+  - id: t4
+    description: Declining over the driver-PII concern.
+    why_attractive: >
+      A security question from the customer's own team sounds like a
+      blocker, but the written security review resolves it: covered by the
+      existing DPA with row-level permissions, nothing prohibited.
+
+gold_rationale: >
+  Resolve the facts under the stated precedence, then apply the policy in
+  order. Seats: Dana's "at least 300" is a recollection; Priya's admin
+  console pull of 240 distinct viewers is measured data and supersedes it,
+  Dana concedes the correction on the call, and the CFO's written follow-up
+  designates the usage data as the number of record: seats_affected
+  resolves to 240. Renewal: the CFO states 80 days in writing. Expansion:
+  the system of record says 120 (thousand USD); the AE's 500 conflates
+  expansion with the renewal base and is corrected in-thread. Security: the
+  written review finds nothing prohibited. Workaround: the API lacks
+  scheduled exports and row-level permissions, so it does not cover the
+  request. Policy: decline does not fire (nothing prohibited); build needs
+  250 or more seats within 120 days of renewal, and 240 fails; configure
+  needs a covering workaround, and there is none; the paid-pilot rule needs
+  150 or more, and 120 fails. The catch-all fires: defer. Every louder
+  reading of the mess (300 seats, $500k, "just use the API") selects a
+  different, wrong action.

@@ -120,6 +120,19 @@ missing, duplicate, or stale predictions outright.
 
 ## Dataset status
 
+The current head adds the **messy-intake family** (4 scenarios, v0.3
+series): decisions assembled from raw call transcripts, Slack threads, and
+email chains where speakers contradict themselves and each other. The design
+rule that keeps mess deterministic: **conflict lives in the rendering, never
+in the policy.** Stated source-precedence rules (measured data supersedes
+recollection, a speaker's correction supersedes their earlier claim, the
+economic buyer's written word outranks everything) make resolved facts
+derivable — and when a decision-relevant conflict is ranked by no precedence
+rule, the fact is *unresolved* and the value-of-information machinery makes
+"go ask, in writing, from the person who owns the number" the entailed
+answer. Confident optimistic reads and confident conservative reads of the
+same thread are both graded as what they are: guesses.
+
 v0.2 contains **20 public scenarios**: 7 families in matched variants —
 capacity prioritization (including a 12-candidate instance whose optimum no
 greedy or per-category heuristic finds), feedback signal analysis,

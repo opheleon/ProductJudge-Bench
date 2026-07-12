@@ -1,0 +1,161 @@
+instance_id: messy-renewal-002
+family: messy-intake
+pair_id: messy-renewal
+variant: control
+domain: b2b-security-saas
+difficulty: hard
+version: 0.3.0
+split: public
+
+title: Enterprise bundle decision from a Slack ping, a procurement email, and a CFO letter
+
+company_context: >
+  You are the product lead for a security-compliance platform. Vantage
+  Mutual, a top-fifteen account, renews soon, and the account team wants a
+  decision this week: commit engineering to the SSO-plus-audit bundle
+  Vantage's champion has been demanding, or hold. Nobody has written a
+  brief; you have the account team's Slack thread and this week's email
+  traffic. The statements conflict. The intake policy below tells you how to
+  resolve conflicts, and it tells you what to do when the sources that
+  disagree cannot be ranked: a decision-relevant fact with no authoritative
+  source is missing, not merely disputed, and guessing it is not an option.
+
+evidence: >
+  --- Internal Slack, #vantage-account, Monday ---
+
+  @jules.tan (AE): Talked to Rob Okonkwo (VP Security, our champion) at the
+  conference. Direct quote: "if the SSO and audit bundle lands this cycle,
+  I can get you a couple hundred grand of expansion, my team is desperate."
+  He was VERY confident. This is the strongest buying signal we have had
+  from them in two years.
+
+  @dev.mehta (CSM): Counterpoint from my Tuesday sync: their procurement
+  analyst, Sofia Reyes, told me flat out that the budget file she manages
+  shows zero expansion dollars allocated for this cycle. Her words:
+  "renewal at current value is what I have been told to model."
+
+  @jules.tan: procurement always says that, Rob owns the relationship with
+  the CFO
+
+  @dev.mehta: Rob does not own the budget though. Neither do I, neither do
+  you. Someone should just ask their CFO in writing.
+
+  @jules.tan: we cannot ask the CFO for numbers every time, it makes us
+  look like we do not know the account
+
+
+  --- Email, Tuesday ---
+
+  From: Sofia Reyes, Procurement Analyst, Vantage Mutual
+  To: Dev Mehta
+  Subject: Renewal logistics
+
+  Dev, confirming logistics for the renewal: the date is 60 days out, and
+  our security review of your platform closed with no findings last month,
+  so nothing on our side blocks scope changes if the business approves
+  them. On budget I can only tell you what is in my file, which I shared
+  already. Anything beyond that is above my desk.
+
+  From: Miriam Castellanos, Chief Financial Officer, Vantage Mutual
+  To: Dev Mehta
+  Cc: Sofia Reyes; Rob Okonkwo
+  Subject: RE: Renewal logistics
+
+  Dev, to settle the back-and-forth I understand is happening on both
+  sides: if the SSO and audit bundle is contractually committed for this
+  cycle, Vantage will commit 180 thousand USD of expansion at signature. I
+  have asked Sofia to update the budget file she manages accordingly; Rob's
+  enthusiasm is appreciated but the number is the one in this email.
+
+  From: Jules Tan (internal)
+  To: Product
+  Subject: Vantage bundle - need an answer
+
+  Product team: Rob is champion-committed, procurement is being
+  procurement. I need a build commitment this week to keep momentum. The
+  hallway read at the conference was that their CISO org got new money for
+  identity projects. Let us not overthink this.
+
+facts_in_prose: true
+
+facts:
+  renewal_within_days: 60
+  security_review_failed: false
+  committed_expansion_usd_k: 180
+
+fact_definitions:
+  renewal_within_days: days until the customer's renewal date
+  security_review_failed: whether the customer's security review of our platform closed with blocking findings
+  committed_expansion_usd_k: expansion in thousands of USD the customer will commit for the bundle, as stated by an authoritative source
+  preferred_billing_cadence: whether the customer wants annual or quarterly billing for any expansion
+
+questions:
+  - id: q-budget
+    text: What expansion budget will Vantage's CFO commit in writing for the bundle this cycle?
+    fact: committed_expansion_usd_k
+  - id: q-billing
+    text: Does Vantage prefer annual or quarterly billing for any expansion?
+    fact: preferred_billing_cadence
+  - id: q-renewal-date
+    text: When is Vantage's renewal date?
+    fact: renewal_within_days
+
+unknowns:
+  - fact: preferred_billing_cadence
+    admissible_values: [annual, quarterly]
+
+constraints:
+  - id: C1
+    text: "Source precedence: a written statement from the customer's economic buyer outranks everything; a signed document or budget system of record outranks verbal claims; conflicting sources that the precedence order does not rank leave the fact unresolved."
+  - id: C2
+    text: Build commitments require resolved facts from the policy inputs; champion enthusiasm and hallway reads are not inputs.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: security_review_failed
+      actions: [decline]
+    - when: committed_expansion_usd_k >= 120 and renewal_within_days <= 90
+      actions: [build]
+    - when: "True"
+      actions: [defer]
+
+gold:
+  - id: g1
+    check: principal_action
+    dimension: decision
+    acceptable_actions: [build]
+
+traps:
+  - id: t1
+    description: Clarifying the budget anyway because the sources still disagree on the surface.
+    why_attractive: >
+      The champion's "couple hundred grand" and procurement's zero are both
+      still in the thread, and asking was the right answer in the paired
+      scenario. But the CFO's written statement is the economic buyer in
+      writing, the top of the stated precedence: it outranks both, resolves
+      the fact at 180, and makes the question worthless. Asking the CFO to
+      restate a number she just put in writing is the read-the-thread
+      failure, not diligence.
+  - id: t2
+    description: Deferring because procurement's budget file still says zero.
+    why_attractive: >
+      The file has not been updated yet, and "the system of record says
+      zero" sounds rigorous. But the CFO's email states she has directed the
+      file to be updated, and the precedence puts the economic buyer's
+      written word above the working file.
+
+gold_rationale: >
+  The control for the pair: one added document, the CFO's email, resolves
+  the same conflict the base scenario leaves open. Under the stated
+  precedence a written statement from the economic buyer outranks
+  everything, so committed_expansion_usd_k resolves to 180 regardless of
+  the champion's verbal 200 or the stale budget file's zero. Stated facts:
+  security review clean, renewal 60 days out. Policy: decline does not
+  fire; build needs 120 or more committed within 90 days of renewal, and
+  180 within 60 fires it: build. The one genuinely unknown fact, billing
+  cadence, is read by no rule, so both its values produce build and
+  clarifying has zero decision value. A model that asks q-budget here after
+  correctly asking it in the paired scenario is pattern-matching "sources
+  conflict, so ask" instead of walking the precedence order to check
+  whether the conflict is actually unresolved.
