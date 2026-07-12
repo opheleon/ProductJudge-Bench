@@ -148,28 +148,46 @@ from "roll out" to "run a controlled experiment."
 This is a harness pilot, not a leaderboard: discrimination claims wait for
 at least three model families, repeat runs, and a held-out split.
 
-**Pilot results (July 2026, reported honestly):**
+**Pilot results (July 2026, 24 scenarios, five models, two thinking lanes):**
 
-| Run | Overall | Decision | Mean regret |
-|---|---|---|---|
-| claude-fable-5, reasoning high | 100% | 100% | 0.0% |
-| claude-fable-5, no reasoning | 100% | 100% | 0.0% |
-| GLM-5.2, reasoning high | 100% | 100% | 0.0% |
-| GLM-5.2, no reasoning | 93% | 75% | 1.8% |
-| best trivial baseline | 55% | 43% | — |
+| Model | Decision (high) | Overall (high) | Decision (none) | Overall (none) |
+|---|---|---|---|---|
+| claude-opus-4-8 | **100%** | **100%** | **100%** | **100%** |
+| claude-fable-5 | 97% | 90% | 97% | 90% |
+| grok-4.5 | 97% | 90% | 97% | 90% |
+| gpt-5.6-sol | 97% | 85% | 100% | 95% |
+| GLM-5.2 (Baseten) | 97% | 90% | 75% | 93% |
+| best trivial baseline | 38% | 55% | 38% | 55% |
 
-At high reasoning effort both models still saturate v0.2 — Simpson's
-reversal, the gate-pinned unknown, the confounded history, and the
-12-candidate integer program included. With reasoning off, the tier gap
-opens and GLM-5.2 fails in exactly the ways the traps predict: it ships on
-the blended delta, holds on a raw refund count, stuffs knapsacks past the
-budget, and repeats the paired scenario's canonical plan instead of
-re-optimizing. Two conclusions: the traps measure what they claim to
-measure, and extended thinking is currently what buys models out of them.
-v0.3 difficulty therefore targets what thinking does not trivially buy:
-realistic-length document piles (8-10K words), instances near the
-enumeration cap with sub-1% optimality gaps, interacting rule systems, and
-two-stage decisions.
+Three findings:
+
+1. **Enumerated-options decision-making is saturated at high effort.** Every
+   model at high reasoning solves the knapsacks, the Simpson's reversal, the
+   confounded history, and the gate-pinned unknown. When the options,
+   constraints, and evidence are cleanly on the table, frontier models make
+   the right call.
+2. **The messy-intake family found a real, thinking-invariant crack.** Four
+   of five models fail `messy-renewal-001` identically — at full thinking
+   effort. The scenario's champion claims "a couple hundred grand" of
+   expansion, procurement's file says zero, no precedence rule ranks them,
+   and the policy plus the clarification menu make "get the number in
+   writing from the CFO" the entailed move. fable, grok, gpt, and GLM
+   instead resolve the conflict *by fiat* — every one of them silently sides
+   with the conservative source and defers. Extended thinking does not fix
+   it (fable and grok fail at both lanes): the failure is not arithmetic, it
+   is an epistemic habit of guessing instead of asking. opus-4-8 — which
+   never asks a clarifying question on SysDesign-Bench — is the only model
+   that asks here, and it is the only 100%.
+3. **With reasoning off, the tier gap opens.** GLM-5.2 drops to 75% on
+   Decision, failing exactly the trapped ways: it ships on the blended
+   delta, stuffs knapsacks past the budget, repeats the paired scenario's
+   canonical plan, and takes the loud numbers in the messy transcript at
+   face value.
+
+v0.3 difficulty therefore scales what the messy family proved out —
+realistic conversational evidence with source conflicts — alongside longer
+document piles (8-10K words), instances near the enumeration cap with
+sub-1% optimality gaps, interacting rule systems, and two-stage decisions.
 
 ## Related work
 
