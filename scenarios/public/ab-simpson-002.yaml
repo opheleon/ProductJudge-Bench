@@ -1,0 +1,103 @@
+instance_id: ab-simpson-002
+family: ab-readout
+pair_id: ab-simpson
+variant: counterfactual
+domain: b2c-marketplace
+difficulty: hard
+version: 0.2.0
+split: public
+
+title: Sequential ranking-model comparison across a traffic-mix shift (both segments up)
+
+company_context: >
+  You own search for a consumer marketplace. The new ranking model (R2)
+  replaced last quarter's model (R1) at the quarter boundary, so the
+  comparison is sequential, not randomized. Between the two quarters the
+  paid app-install campaign also ramped, shifting traffic heavily toward
+  mobile. The pre-registered evaluation protocol for sequential comparisons
+  therefore requires per-segment analysis: segment mix is not controlled
+  across quarters, so blended rates are not decision-grade. Decide the
+  readout for R2 per the protocol.
+
+evidence: >
+  Analytics extract, ranking comparison R1 vs R2. R1 quarter: mobile
+  sessions 2000 with 200 search-to-purchase conversions; desktop sessions
+  8000 with 400 conversions. R2 quarter: mobile sessions 8000 with 856
+  conversions; desktop sessions 2000 with 112 conversions. A skeptical
+  staff engineer in the readout thread: "mobile share went 20% to 80%
+  between quarters, this is exactly the mix-shift trap from last time,
+  the blended number is meaningless, we should hold." Data platform note:
+  the protocol pins sequential readouts to per-segment deltas for exactly
+  that reason; apply it and see what the segments say.
+
+facts_in_prose: false
+
+facts:
+  r1_mobile_sessions: 2000
+  r1_mobile_conversions: 200
+  r1_desktop_sessions: 8000
+  r1_desktop_conversions: 400
+  r2_mobile_sessions: 8000
+  r2_mobile_conversions: 856
+  r2_desktop_sessions: 2000
+  r2_desktop_conversions: 112
+
+fact_definitions:
+  r1_mobile_sessions: mobile search sessions in the R1 quarter
+  r1_mobile_conversions: mobile search-to-purchase conversions in the R1 quarter
+  r1_desktop_sessions: desktop search sessions in the R1 quarter
+  r1_desktop_conversions: desktop conversions in the R1 quarter
+  r2_mobile_sessions: mobile search sessions in the R2 quarter
+  r2_mobile_conversions: mobile conversions in the R2 quarter
+  r2_desktop_sessions: desktop search sessions in the R2 quarter
+  r2_desktop_conversions: desktop conversions in the R2 quarter
+
+constraints:
+  - id: C1
+    text: Sequential comparisons must be read per segment; blended rates are not decision-grade when segment mix moved between periods.
+
+decision_spec:
+  kind: slot_decision
+  action: experiment
+  slot: ab_decision
+  labels: [ship, hold, extend]
+  rules:
+    - when: r1_mobile_sessions < 1500 or r2_mobile_sessions < 1500 or r1_desktop_sessions < 1500 or r2_desktop_sessions < 1500
+      label: extend
+    - when: (r2_mobile_conversions / r2_mobile_sessions - r1_mobile_conversions / r1_mobile_sessions) * 100 >= 0.5 and (r2_desktop_conversions / r2_desktop_sessions - r1_desktop_conversions / r1_desktop_sessions) * 100 >= 0.5
+      label: ship
+    - when: "True"
+      label: hold
+
+gold:
+  - id: g1
+    check: principal_slot
+    dimension: decision
+    action: experiment
+    slot: ab_decision
+    acceptable: [ship]
+
+traps:
+  - id: t1
+    description: Holding because the mix shift makes the comparison feel untrustworthy.
+    why_attractive: >
+      The staff engineer's "this is the mix-shift trap" comment primes
+      distrust, and holding was the right answer in the paired scenario. But
+      the protocol does not say mix shifts invalidate readouts; it says read
+      the segments. Here mobile improved 10.7% vs 10.0% (plus 0.7 points)
+      and desktop improved 5.6% vs 5.0% (plus 0.6 points): both clear the
+      0.5-point bar, so the determined readout is ship. Vibes-level
+      skepticism that overrides the segment arithmetic is as wrong as
+      vibes-level enthusiasm for the blended number.
+
+gold_rationale: >
+  Worked math per the pre-registered sequential protocol, with two changed
+  facts vs the paired scenario (R2's segment conversions). Sample floors:
+  all four segment-quarter cells have at least 2000 sessions, extend does
+  not fire. Per-segment deltas: mobile R2 856/8000 = 10.7% vs R1 200/2000 =
+  10.0%, plus 0.7 points; desktop R2 112/2000 = 5.6% vs R1 400/8000 = 5.0%,
+  plus 0.6 points. Both meet the 0.5-point bar, so the ship rule fires. The
+  mix shift is identical to the paired scenario (mobile share 20% to 80%)
+  and is irrelevant once the analysis is per-segment: the pair rewards
+  models that actually run the protocol arithmetic and punishes both the
+  blended-number reflex and the learned "mix shift means hold" reflex.

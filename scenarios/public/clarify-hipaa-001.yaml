@@ -1,0 +1,118 @@
+instance_id: clarify-hipaa-001
+family: clarify-vs-decide
+pair_id: clarify-hipaa
+variant: base
+domain: health-saas
+difficulty: hard
+version: 0.2.0
+split: public
+
+title: Clinic chain wants patient-messaging, contract size unknown
+
+company_context: >
+  You are the product lead for a scheduling platform used by dental and
+  physical-therapy clinics. A 90-location clinic chain wants two-way patient
+  messaging (appointment changes, intake reminders) added to the platform.
+  Because message content would include protected health information, the
+  offering requires signing a Business Associate Agreement (BAA). The account
+  team has not yet pinned down what the chain would commit contractually.
+  Apply the stated policy; if a fact the policy needs is not stated anywhere,
+  use the clarification menu rather than guessing. Asking a question the
+  answer to which cannot change the decision counts against you.
+
+evidence: >
+  Legal memo (July 2): we cannot execute BAAs this fiscal year. Our hosting
+  and subprocessor chain has not completed the HIPAA compliance program
+  (risk analysis, subprocessor BAAs, breach procedures); counsel's position
+  is unchanged since the March review. Any feature carrying PHI is out of
+  bounds until the program completes, regardless of deal size.
+
+
+  Security note (June 20): the messaging prototype passed internal security
+  review cleanly; encryption at rest and in transit meet our standard bar.
+  This does not substitute for the BAA prerequisite above.
+
+
+  Account team note (July 8): the chain's procurement is engaged and "budget
+  exists," but no ARR figure is on paper yet. Scope is also fluid: they may
+  want messaging only, or messaging plus intake-forms integration with their
+  EHR. Champion expects an answer this month.
+
+facts_in_prose: false
+
+facts:
+  baa_available: false
+  security_review_passed: true
+
+fact_definitions:
+  baa_available: whether legal can execute a Business Associate Agreement this fiscal year
+  security_review_passed: whether the messaging prototype passed internal security review
+  committed_arr_usd_k: ARR in thousands of USD the chain will commit contractually
+  integration_scope: whether the chain wants messaging-only or messaging plus EHR intake-forms integration
+
+questions:
+  - id: q-arr
+    text: What ARR will the chain commit contractually?
+    fact: committed_arr_usd_k
+  - id: q-scope
+    text: Does the chain want messaging only, or messaging plus EHR intake-forms integration?
+    fact: integration_scope
+  - id: q-baa
+    text: Can legal execute a BAA this fiscal year?
+    fact: baa_available
+
+unknowns:
+  - fact: committed_arr_usd_k
+    admissible_values: [80, 500]
+  - fact: integration_scope
+    admissible_values: [messaging-only, full-ehr]
+
+constraints:
+  - id: C1
+    text: Features carrying protected health information require an executed BAA before any commitment.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: not baa_available
+      actions: [decline]
+    - when: committed_arr_usd_k >= 200
+      actions: [build]
+    - when: "True"
+      actions: [defer]
+
+gold:
+  - id: g1
+    check: principal_action
+    dimension: decision
+    acceptable_actions: [decline]
+
+traps:
+  - id: t1
+    description: Clarifying the ARR commitment before answering.
+    why_attractive: >
+      The contract size is genuinely unknown, the policy visibly reads it,
+      and 80k vs 500k feels decision-defining. But the BAA rule sits above
+      the ARR rule and baa_available is stated false: under every admissible
+      ARR value (and every scope), the first rule fires and the answer is
+      decline. The unknown is real; its decision value is zero. Asking is
+      stalling.
+  - id: t2
+    description: Treating the clean security review as clearing the compliance bar.
+    why_attractive: >
+      A passed security review reads like "compliance is handled," but the
+      security note itself states it does not substitute for the BAA
+      prerequisite, and the policy keys on baa_available alone.
+
+gold_rationale: >
+  Value-of-information analysis under the stated policy. baa_available is
+  stated false (legal memo), so the first rule fires: decline. The two
+  genuinely unknown facts, committed_arr_usd_k (80 or 500) and
+  integration_scope (messaging-only or full-ehr), are read either below the
+  firing rule or not at all: enumerating all four assignments produces
+  decline every time, so no question has decision value and the correct
+  answer is to decide, action decline. This is the gate-pinned unknown case:
+  an unknown can be large, salient, and named by the policy, and still be
+  worthless to ask about because a rule above it already determines the
+  outcome. The paired scenario lifts the gate and turns the same unknown
+  decision-changing.

@@ -120,22 +120,43 @@ missing, duplicate, or stale predictions outright.
 
 ## Dataset status
 
-v0.1 contains **12 public scenarios**: 6 families x 2 matched variants
-(capacity prioritization, feedback signal analysis, build/configure/decline,
-conflicting customer requests, A/B readouts, clarify-vs-decide). This is a
-harness pilot, not a leaderboard: discrimination claims wait for at least
-three model families, repeat runs, and a held-out split, per the roadmap.
+v0.2 contains **20 public scenarios**: 7 families in matched variants —
+capacity prioritization (including a 12-candidate instance whose optimum no
+greedy or per-category heuristic finds), feedback signal analysis,
+build/configure/decline, conflicting customer requests, A/B readouts
+(including an aggregation-reversal instance where the blended rate and the
+per-segment truth disagree), clarify-vs-decide (including a gate-pinned
+unknown that is salient, policy-visible, and worthless to ask about), and
+**historical attribution**: sequential we-tried-A-then-A' histories where
+the outcome delta is attributable only if the attempts differed in exactly
+the tested variable, and a buried cohort confound flips the correct call
+from "roll out" to "run a controlled experiment."
 
-**Pilot result (July 2026, honest and unflattering):** claude-fable-5 and
-GLM-5.2 both score **100%** on v0.1 at high reasoning effort (total cost
-$0.57), against a 57% best-trivial-baseline floor. The harness works
-end-to-end — both counterfactual pairs flipped, the clarify pair split
-exactly, prose extraction held — but frontier models apply a stated policy
-to a dozen facts without dropping anything. The construct survives; the
-difficulty does not. v0.2 must scale the evidence (30+ cluster corpora,
-multi-document haystacks at realistic length), chain gates so feasibility
-requires multi-step derivation, and push unknowns into subtler
-value-of-information territory before any leaderboard is published.
+This is a harness pilot, not a leaderboard: discrimination claims wait for
+at least three model families, repeat runs, and a held-out split.
+
+**Pilot results (July 2026, reported honestly):**
+
+| Run | Overall | Decision | Mean regret |
+|---|---|---|---|
+| claude-fable-5, reasoning high | 100% | 100% | 0.0% |
+| claude-fable-5, no reasoning | 100% | 100% | 0.0% |
+| GLM-5.2, reasoning high | 100% | 100% | 0.0% |
+| GLM-5.2, no reasoning | 93% | 75% | 1.8% |
+| best trivial baseline | 55% | 43% | — |
+
+At high reasoning effort both models still saturate v0.2 — Simpson's
+reversal, the gate-pinned unknown, the confounded history, and the
+12-candidate integer program included. With reasoning off, the tier gap
+opens and GLM-5.2 fails in exactly the ways the traps predict: it ships on
+the blended delta, holds on a raw refund count, stuffs knapsacks past the
+budget, and repeats the paired scenario's canonical plan instead of
+re-optimizing. Two conclusions: the traps measure what they claim to
+measure, and extended thinking is currently what buys models out of them.
+v0.3 difficulty therefore targets what thinking does not trivially buy:
+realistic-length document piles (8-10K words), instances near the
+enumeration cap with sub-1% optimality gaps, interacting rule systems, and
+two-stage decisions.
 
 ## Related work
 

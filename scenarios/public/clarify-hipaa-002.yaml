@@ -1,0 +1,123 @@
+instance_id: clarify-hipaa-002
+family: clarify-vs-decide
+pair_id: clarify-hipaa
+variant: counterfactual
+domain: health-saas
+difficulty: hard
+version: 0.2.0
+split: public
+
+title: Clinic chain wants patient-messaging, contract size unknown (BAA program complete)
+
+company_context: >
+  You are the product lead for a scheduling platform used by dental and
+  physical-therapy clinics. A 90-location clinic chain wants two-way patient
+  messaging (appointment changes, intake reminders) added to the platform.
+  Because message content would include protected health information, the
+  offering requires signing a Business Associate Agreement (BAA). The account
+  team has not yet pinned down what the chain would commit contractually.
+  Apply the stated policy; if a fact the policy needs is not stated anywhere,
+  use the clarification menu rather than guessing. Asking a question the
+  answer to which cannot change the decision counts against you.
+
+evidence: >
+  Legal memo (July 2): the HIPAA compliance program completed in June (risk
+  analysis, subprocessor BAAs, breach procedures all signed off). We can
+  execute BAAs effective immediately; counsel has published the standard
+  BAA template for account teams.
+
+
+  Security note (June 20): the messaging prototype passed internal security
+  review cleanly; encryption at rest and in transit meet our standard bar.
+
+
+  Account team note (July 8): the chain's procurement is engaged and "budget
+  exists," but no ARR figure is on paper yet. Scope is also fluid: they may
+  want messaging only, or messaging plus intake-forms integration with their
+  EHR. Champion expects an answer this month.
+
+facts_in_prose: false
+
+facts:
+  baa_available: true
+  security_review_passed: true
+
+fact_definitions:
+  baa_available: whether legal can execute a Business Associate Agreement this fiscal year
+  security_review_passed: whether the messaging prototype passed internal security review
+  committed_arr_usd_k: ARR in thousands of USD the chain will commit contractually
+  integration_scope: whether the chain wants messaging-only or messaging plus EHR intake-forms integration
+
+questions:
+  - id: q-arr
+    text: What ARR will the chain commit contractually?
+    fact: committed_arr_usd_k
+  - id: q-scope
+    text: Does the chain want messaging only, or messaging plus EHR intake-forms integration?
+    fact: integration_scope
+  - id: q-baa
+    text: Can legal execute a BAA this fiscal year?
+    fact: baa_available
+
+unknowns:
+  - fact: committed_arr_usd_k
+    admissible_values: [80, 500]
+  - fact: integration_scope
+    admissible_values: [messaging-only, full-ehr]
+
+constraints:
+  - id: C1
+    text: Features carrying protected health information require an executed BAA before any commitment.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: not baa_available
+      actions: [decline]
+    - when: committed_arr_usd_k >= 200
+      actions: [build]
+    - when: "True"
+      actions: [defer]
+
+gold:
+  - id: g1
+    check: principal_clarify
+    dimension: clarification
+    required_questions: [q-arr]
+    allowed_questions: [q-arr, q-scope]
+
+traps:
+  - id: t1
+    description: Declining out of compliance caution because PHI is involved.
+    why_attractive: >
+      "Healthcare data means no" is a safe-sounding reflex, and it was the
+      right answer in the paired scenario. But the legal memo states the
+      compliance program completed and BAAs are executable now; the decline
+      gate no longer fires, and the policy moves to the ARR rule.
+  - id: t2
+    description: Asking q-baa alongside the real question.
+    why_attractive: >
+      Confirming the compliance posture feels like diligence, but
+      baa_available is stated in the legal memo; asking about a stated fact
+      signals the documents were not read.
+  - id: t3
+    description: Committing to build because budget "exists" and the champion is pushing.
+    why_attractive: >
+      Deal momentum rewards a confident yes, but the build bar is a committed
+      200k and the admissible range (80 to 500) straddles it; deciding either
+      way without the number is a guess.
+
+gold_rationale: >
+  The single changed fact vs the paired scenario: the legal memo now states
+  the HIPAA program completed and BAAs are executable, so baa_available is
+  true and the decline gate cannot fire. The policy then reads
+  committed_arr_usd_k, which is not stated anywhere: at 80 the build rule
+  fails and the catch-all gives defer; at 500 the build rule fires and gives
+  build. Different admissible values produce different optimal actions, so
+  the correct move is clarify and q-arr is required. integration_scope
+  remains genuinely unknown but inert (no rule reads it), so q-scope is
+  permitted but not required; q-baa asks about a stated fact and is
+  disallowed. The pair isolates gate-sensitivity: the identical unknown with
+  identical admissible values is worthless to ask about in the base scenario
+  and mandatory to ask about here, and nothing distinguishes the two except
+  one line in the legal memo.

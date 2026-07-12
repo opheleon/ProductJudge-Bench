@@ -1,0 +1,116 @@
+instance_id: hist-onboarding-001
+family: historical-attribution
+pair_id: hist-onboarding
+variant: base
+domain: plg-saas
+difficulty: hard
+version: 0.2.0
+split: public
+
+title: Two onboarding attempts, one open rollout question
+
+company_context: >
+  You own activation for a product-led collaboration tool. Over the last two
+  quarters the growth pod ran two onboarding approaches, one after the other,
+  and the numbers came back different. The pod wants a call today: roll the
+  new approach out to everyone, revert it, keep gathering data, or run a
+  controlled test first. The company's experimentation policy for sequential
+  (non-randomized) comparisons is stated below; apply it to the history in
+  the retro documents. Comparisons between attempts are attributable only
+  when the attempts are stated to be comparable; otherwise the history cannot
+  tell you what caused the difference.
+
+evidence: >
+  --- Retro: Q1 onboarding attempt (guided checklist) ---
+
+  We replaced the empty-state dashboard with a guided checklist (invite a
+  teammate, create a project, connect one integration). Ran the full quarter
+  on organic self-serve signups. Fourteen-day activation landed at 34% for
+  the quarter. Pricing was the standard 49 USD/seat plan throughout. Support
+  volume from new users dropped slightly; two enterprise trials complained
+  the checklist felt "consumer-ish," logged for the design refresh.
+
+
+  --- Retro: Q2 onboarding attempt (interactive walkthrough) ---
+
+  We swapped the checklist for an interactive walkthrough that builds the
+  user's first project inline. Everything else was held as-is on purpose:
+  same organic self-serve signup mix as Q1 (marketing confirmed no campaign
+  or launch anomalies in either quarter), pricing unchanged at 49 USD/seat.
+  Fourteen-day activation for the quarter: 42%. One designer flagged that
+  walkthrough completion drops on small screens; mobile is 9% of signups and
+  was 9% in Q1 as well.
+
+
+  --- Slack thread, growth channel ---
+
+  PM intern: "42 vs 34, ship it?" Data scientist: "Check the sequential
+  comparison policy first, that is what it exists for. If the cohorts or
+  pricing moved between quarters the delta is not attributable."
+
+facts_in_prose: true
+
+facts:
+  attempt_a_segment: self-serve
+  attempt_b_segment: self-serve
+  attempt_a_price_usd: 49
+  attempt_b_price_usd: 49
+  attempt_a_activation_pct: 34
+  attempt_b_activation_pct: 42
+
+fact_definitions:
+  attempt_a_segment: signup cohort the Q1 (guided checklist) attempt ran on
+  attempt_b_segment: signup cohort the Q2 (interactive walkthrough) attempt ran on
+  attempt_a_price_usd: per-seat price in USD during the Q1 attempt
+  attempt_b_price_usd: per-seat price in USD during the Q2 attempt
+  attempt_a_activation_pct: 14-day activation percentage for the Q1 attempt
+  attempt_b_activation_pct: 14-day activation percentage for the Q2 attempt
+
+constraints:
+  - id: C1
+    text: Sequential comparisons are attributable only when cohort and pricing are unchanged between attempts; confounded histories require a controlled experiment before any rollout decision.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: attempt_a_segment != attempt_b_segment or attempt_a_price_usd != attempt_b_price_usd
+      actions: [experiment]
+    - when: attempt_b_activation_pct - attempt_a_activation_pct >= 5
+      actions: [build]
+    - when: attempt_a_activation_pct - attempt_b_activation_pct >= 5
+      actions: [decline]
+    - when: "True"
+      actions: [defer]
+
+gold:
+  - id: g1
+    check: principal_action
+    dimension: decision
+    acceptable_actions: [build]
+
+traps:
+  - id: t1
+    description: Demanding a controlled experiment anyway because sequential comparisons feel unsafe.
+    why_attractive: >
+      "Correlation is not causation" is the reflex, and the data scientist's
+      Slack comment primes it. But the policy's confound guard checks cohort
+      and pricing, both retros state they were held constant, and the mobile
+      mix is explicitly unchanged at 9%. The comparability conditions the
+      policy names are satisfied; the 8-point delta clears the rollout bar.
+  - id: t2
+    description: Weighing the enterprise-trial complaints or small-screen note into the rollout call.
+    why_attractive: >
+      Real-sounding qualitative texture, but the stated policy reads exactly
+      four facts per attempt-pair: cohorts, pricing, and the two activation
+      rates.
+
+gold_rationale: >
+  Applying the sequential-comparison policy top-down. Confound guard: both
+  retros state the same organic self-serve cohort and the same 49 USD/seat
+  pricing in both quarters (and the same 9% mobile mix), so rule 1 does not
+  fire and the history is attributable. Delta rule: 42 - 34 = 8 percentage
+  points, at least 5, so rule 2 fires: build (roll out the walkthrough). The
+  trap is symmetric to the usual one: here the naive "ship the bigger number"
+  answer happens to be right, and the reflexive "never trust sequential data"
+  answer is wrong, because the policy states exactly which confounds matter
+  and the retros rule them out. The paired scenario flips this.

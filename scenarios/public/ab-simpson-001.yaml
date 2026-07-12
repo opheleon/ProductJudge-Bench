@@ -1,0 +1,108 @@
+instance_id: ab-simpson-001
+family: ab-readout
+pair_id: ab-simpson
+variant: base
+domain: b2c-marketplace
+difficulty: hard
+version: 0.2.0
+split: public
+
+title: Sequential ranking-model comparison across a traffic-mix shift
+
+company_context: >
+  You own search for a consumer marketplace. The new ranking model (R2)
+  replaced last quarter's model (R1) at the quarter boundary, so the
+  comparison is sequential, not randomized. Between the two quarters the
+  paid app-install campaign also ramped, shifting traffic heavily toward
+  mobile. The pre-registered evaluation protocol for sequential comparisons
+  therefore requires per-segment analysis: segment mix is not controlled
+  across quarters, so blended rates are not decision-grade. Decide the
+  readout for R2 per the protocol.
+
+evidence: >
+  Analytics extract, ranking comparison R1 vs R2. R1 quarter: mobile
+  sessions 2000 with 200 search-to-purchase conversions; desktop sessions
+  8000 with 400 conversions. R2 quarter: mobile sessions 8000 with 752
+  conversions; desktop sessions 2000 with 96 conversions. Growth channel
+  headline: "R2 blended conversion is 8.48% vs R1's 6.0%, plus 2.48 points,
+  ship and move on." Data platform note: the mobile share of sessions moved
+  from 20% to 80% between the quarters due to the install campaign, which is
+  why the protocol pins sequential readouts to per-segment deltas.
+
+facts_in_prose: false
+
+facts:
+  r1_mobile_sessions: 2000
+  r1_mobile_conversions: 200
+  r1_desktop_sessions: 8000
+  r1_desktop_conversions: 400
+  r2_mobile_sessions: 8000
+  r2_mobile_conversions: 752
+  r2_desktop_sessions: 2000
+  r2_desktop_conversions: 96
+
+fact_definitions:
+  r1_mobile_sessions: mobile search sessions in the R1 quarter
+  r1_mobile_conversions: mobile search-to-purchase conversions in the R1 quarter
+  r1_desktop_sessions: desktop search sessions in the R1 quarter
+  r1_desktop_conversions: desktop conversions in the R1 quarter
+  r2_mobile_sessions: mobile search sessions in the R2 quarter
+  r2_mobile_conversions: mobile conversions in the R2 quarter
+  r2_desktop_sessions: desktop search sessions in the R2 quarter
+  r2_desktop_conversions: desktop conversions in the R2 quarter
+
+constraints:
+  - id: C1
+    text: Sequential comparisons must be read per segment; blended rates are not decision-grade when segment mix moved between periods.
+
+decision_spec:
+  kind: slot_decision
+  action: experiment
+  slot: ab_decision
+  labels: [ship, hold, extend]
+  rules:
+    - when: r1_mobile_sessions < 1500 or r2_mobile_sessions < 1500 or r1_desktop_sessions < 1500 or r2_desktop_sessions < 1500
+      label: extend
+    - when: (r2_mobile_conversions / r2_mobile_sessions - r1_mobile_conversions / r1_mobile_sessions) * 100 >= 0.5 and (r2_desktop_conversions / r2_desktop_sessions - r1_desktop_conversions / r1_desktop_sessions) * 100 >= 0.5
+      label: ship
+    - when: "True"
+      label: hold
+
+gold:
+  - id: g1
+    check: principal_slot
+    dimension: decision
+    action: experiment
+    slot: ab_decision
+    acceptable: [hold]
+
+traps:
+  - id: t1
+    description: Shipping on the blended delta (8.48% vs 6.0%, plus 2.48 points).
+    why_attractive: >
+      The blended improvement is large, it is quoted verbatim in the growth
+      channel, and every naive aggregation of the extract reproduces it. It
+      is pure mix shift: mobile converts at roughly double desktop's rate,
+      and mobile's share of sessions moved from 20% to 80% between the
+      quarters. Within each segment R2 is worse.
+  - id: t2
+    description: Extending for more data because the comparison is sequential.
+    why_attractive: >
+      "Sequential comparison" invites a reflexive call for more data, but
+      the protocol's extend rule is a sample floor and every segment-quarter
+      cell has at least 2000 sessions; the protocol resolves this readout to
+      a per-segment decision, and the per-segment answer is determined.
+
+gold_rationale: >
+  Worked math per the pre-registered sequential protocol. Sample floors:
+  every segment-quarter cell has at least 2000 sessions (2000, 8000, 8000,
+  2000), so extend does not fire. Per-segment deltas: mobile R2 752/8000 =
+  9.4% vs R1 200/2000 = 10.0%, delta minus 0.6 points; desktop R2 96/2000 =
+  4.8% vs R1 400/8000 = 5.0%, delta minus 0.2 points. The ship rule needs
+  both segment deltas at plus 0.5 points or better; both are negative, so
+  the readout is hold. The blended figures invert the picture (R1 600/10000
+  = 6.0%, R2 848/10000 = 8.48%, plus 2.48 points) purely because the
+  app-install campaign moved the mobile session share from 20% to 80% and
+  mobile converts at roughly twice desktop's rate: a textbook aggregation
+  reversal. The protocol exists precisely because blended rates are not
+  decision-grade across a mix shift.

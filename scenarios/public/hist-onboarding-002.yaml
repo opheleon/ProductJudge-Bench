@@ -1,0 +1,121 @@
+instance_id: hist-onboarding-002
+family: historical-attribution
+pair_id: hist-onboarding
+variant: counterfactual
+domain: plg-saas
+difficulty: hard
+version: 0.2.0
+split: public
+
+title: Two onboarding attempts, one open rollout question (launch-quarter cohort)
+
+company_context: >
+  You own activation for a product-led collaboration tool. Over the last two
+  quarters the growth pod ran two onboarding approaches, one after the other,
+  and the numbers came back different. The pod wants a call today: roll the
+  new approach out to everyone, revert it, keep gathering data, or run a
+  controlled test first. The company's experimentation policy for sequential
+  (non-randomized) comparisons is stated below; apply it to the history in
+  the retro documents. Comparisons between attempts are attributable only
+  when the attempts are stated to be comparable; otherwise the history cannot
+  tell you what caused the difference.
+
+evidence: >
+  --- Retro: Q1 onboarding attempt (guided checklist) ---
+
+  We replaced the empty-state dashboard with a guided checklist (invite a
+  teammate, create a project, connect one integration). Ran the full quarter
+  on organic self-serve signups. Fourteen-day activation landed at 34% for
+  the quarter. Pricing was the standard 49 USD/seat plan throughout. Support
+  volume from new users dropped slightly; two enterprise trials complained
+  the checklist felt "consumer-ish," logged for the design refresh.
+
+
+  --- Retro: Q2 onboarding attempt (interactive walkthrough) ---
+
+  We swapped the checklist for an interactive walkthrough that builds the
+  user's first project inline. Pricing was unchanged at 49 USD/seat.
+  Fourteen-day activation for the quarter: 42%. One important note for the
+  record: the April Product Hunt launch dominated the quarter's signups, so
+  this attempt effectively ran on the launch-spike cohort rather than the
+  usual organic mix; marketing's cohort report tags the quarter accordingly.
+  Launch-week signups historically activate hotter regardless of onboarding.
+
+
+  --- Slack thread, growth channel ---
+
+  PM intern: "42 vs 34, ship it?" Data scientist: "Check the sequential
+  comparison policy first, that is what it exists for. If the cohorts or
+  pricing moved between quarters the delta is not attributable."
+
+facts_in_prose: true
+
+facts:
+  attempt_a_segment: self-serve
+  attempt_b_segment: launch-spike
+  attempt_a_price_usd: 49
+  attempt_b_price_usd: 49
+  attempt_a_activation_pct: 34
+  attempt_b_activation_pct: 42
+
+fact_definitions:
+  attempt_a_segment: signup cohort the Q1 (guided checklist) attempt ran on
+  attempt_b_segment: signup cohort the Q2 (interactive walkthrough) attempt ran on
+  attempt_a_price_usd: per-seat price in USD during the Q1 attempt
+  attempt_b_price_usd: per-seat price in USD during the Q2 attempt
+  attempt_a_activation_pct: 14-day activation percentage for the Q1 attempt
+  attempt_b_activation_pct: 14-day activation percentage for the Q2 attempt
+
+constraints:
+  - id: C1
+    text: Sequential comparisons are attributable only when cohort and pricing are unchanged between attempts; confounded histories require a controlled experiment before any rollout decision.
+
+decision_spec:
+  kind: action_choice
+  rules:
+    - when: attempt_a_segment != attempt_b_segment or attempt_a_price_usd != attempt_b_price_usd
+      actions: [experiment]
+    - when: attempt_b_activation_pct - attempt_a_activation_pct >= 5
+      actions: [build]
+    - when: attempt_a_activation_pct - attempt_b_activation_pct >= 5
+      actions: [decline]
+    - when: "True"
+      actions: [defer]
+
+gold:
+  - id: g1
+    check: principal_action
+    dimension: decision
+    acceptable_actions: [experiment]
+
+traps:
+  - id: t1
+    description: Rolling out the walkthrough because activation rose 8 points, same as the paired history.
+    why_attractive: >
+      The headline numbers are identical to the comparable-history case (42
+      vs 34, same pricing, same 5-point rollout bar), and the walkthrough
+      probably is better. But the Q2 retro states the attempt ran on the
+      Product Hunt launch-spike cohort instead of the usual organic mix, and
+      launch-week signups activate hotter regardless of onboarding. The
+      policy's confound guard fires first: the delta is not attributable, and
+      the entailed move is a controlled experiment, not a rollout.
+  - id: t2
+    description: Reverting to the checklist to be safe.
+    why_attractive: >
+      "The data is dirty" slides into "undo the change," but the policy maps
+      a confounded history to experiment, not decline; reverting throws away
+      a plausibly better onboarding on evidence that cannot distinguish it.
+
+gold_rationale: >
+  Applying the sequential-comparison policy top-down. Confound guard: the Q1
+  attempt ran on the organic self-serve cohort while the Q2 retro states the
+  quarter effectively ran on the launch-spike cohort (Product Hunt), so
+  attempt_a_segment differs from attempt_b_segment and rule 1 fires:
+  experiment. The activation delta (42 - 34 = 8) never gets evaluated; a
+  confounded comparison cannot license a rollout no matter how large the
+  delta. This is the exact single-fact counterfactual of hist-onboarding-001:
+  identical numbers, identical pricing, one changed cohort fact, and the
+  correct decision moves from build to experiment. A model that answers
+  build here is shipping on a confound; a model that answered experiment on
+  the base scenario is refusing attributable evidence. Only reading the
+  cohort lines in both retros separates the two.

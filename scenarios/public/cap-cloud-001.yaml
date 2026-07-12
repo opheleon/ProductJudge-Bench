@@ -1,0 +1,177 @@
+instance_id: cap-cloud-001
+family: capacity-prioritization
+pair_id: cap-cloud
+variant: base
+domain: cloud-infrastructure
+difficulty: hard
+version: 0.2.0
+split: public
+
+title: Half-year platform plan, twelve candidates, one budget
+
+company_context: >
+  You run product for a cloud infrastructure platform. Twelve candidate
+  initiatives compete for the platform group's 20 uncommitted engineer-weeks
+  this half. The GPU serving tier carries the largest revenue number on the
+  board and sales quotes it in every forecast call. Finance wants the plan
+  today.
+
+evidence: >
+  Supply memo (June 30): our GPU capacity provider confirmed the H100-class
+  allocation we contracted will not be delivered before H2; any initiative
+  whose launch requires that allocation cannot ship this half regardless of
+  engineering readiness.
+
+
+  Contract addendum (May 18): the Northwind enterprise agreement adds an
+  availability SLA with financial penalties effective this half; the
+  agreement names a customer-visible SLA status dashboard as a required
+  deliverable of the addendum.
+
+facts_in_prose: false
+
+fact_definitions:
+  eng_weeks: engineer-weeks of platform-group effort the initiative consumes
+  arr_impact_usd_k: ARR protected or unlocked, in thousands of USD, per the FY26 revenue model
+  requires_gpu_allocation: whether launch requires the H100-class allocation that arrives in H2
+  sla_contract_deliverable: whether a signed contract names this initiative as a required deliverable this half
+
+constraints:
+  - id: C1
+    text: The platform group has 20 uncommitted engineer-weeks this half.
+  - id: C2
+    text: Initiatives named as deliverables in signed contracts must ship this half.
+  - id: C3
+    text: Initiatives requiring the H2 GPU allocation cannot ship this half (supply memo).
+  - id: C4
+    text: An initiative may be scheduled only if everything it depends on is scheduled in the same half.
+
+success_criteria:
+  - id: S1
+    text: The plan must include at least one initiative that directly reduces customer infrastructure spend.
+  - id: S2
+    text: The plan must include at least one initiative that advances enterprise compliance posture.
+
+candidates:
+  - id: autoscale-v2
+    title: Autoscaling v2 (predictive scale-down)
+    addresses: [S1]
+    facts: {eng_weeks: 6, arr_impact_usd_k: 800, requires_gpu_allocation: false, sla_contract_deliverable: false}
+  - id: gpu-serving
+    title: GPU model-serving tier
+    facts: {eng_weeks: 7, arr_impact_usd_k: 1400, requires_gpu_allocation: true, sla_contract_deliverable: false}
+  - id: spot-orchestrator
+    title: Spot-instance orchestration
+    addresses: [S1]
+    depends_on: [autoscale-v2]
+    facts: {eng_weeks: 5, arr_impact_usd_k: 700, requires_gpu_allocation: false, sla_contract_deliverable: false}
+  - id: audit-logs
+    title: Tamper-evident audit logging
+    addresses: [S2]
+    facts: {eng_weeks: 4, arr_impact_usd_k: 450, requires_gpu_allocation: false, sla_contract_deliverable: false}
+  - id: sso-hardening
+    title: SSO hardening and session policies
+    addresses: [S2]
+    facts: {eng_weeks: 3, arr_impact_usd_k: 350, requires_gpu_allocation: false, sla_contract_deliverable: false}
+  - id: sla-dashboard
+    title: Customer-visible SLA status dashboard
+    facts: {eng_weeks: 2, arr_impact_usd_k: 150, requires_gpu_allocation: false, sla_contract_deliverable: true}
+  - id: cost-explorer
+    title: Cost explorer with anomaly alerts
+    addresses: [S1]
+    facts: {eng_weeks: 3, arr_impact_usd_k: 320, requires_gpu_allocation: false, sla_contract_deliverable: false}
+  - id: multi-region
+    title: Multi-region failover (two regions)
+    facts: {eng_weeks: 8, arr_impact_usd_k: 900, requires_gpu_allocation: false, sla_contract_deliverable: false}
+  - id: data-residency
+    title: EU data-residency controls
+    addresses: [S2]
+    facts: {eng_weeks: 5, arr_impact_usd_k: 620, requires_gpu_allocation: false, sla_contract_deliverable: false}
+  - id: k8s-upgrade
+    title: Kubernetes runtime upgrade
+    facts: {eng_weeks: 4, arr_impact_usd_k: 380, requires_gpu_allocation: false, sla_contract_deliverable: false}
+  - id: serverless-tier
+    title: Serverless compute tier (beta)
+    depends_on: [k8s-upgrade]
+    facts: {eng_weeks: 6, arr_impact_usd_k: 640, requires_gpu_allocation: false, sla_contract_deliverable: false}
+  - id: billing-api
+    title: Billing export API
+    facts: {eng_weeks: 2, arr_impact_usd_k: 230, requires_gpu_allocation: false, sla_contract_deliverable: false}
+
+decision_spec:
+  kind: selection
+  action: build
+  capacity:
+    cost_fact: eng_weeks
+    budget: 20
+    unit: engineer-weeks
+  objective:
+    sense: maximize
+    value_fact: arr_impact_usd_k
+    unit: thousands of USD
+  gates:
+    - kind: mandatory_when
+      when: sla_contract_deliverable
+      basis: C2
+    - kind: excluded_when
+      when: requires_gpu_allocation
+      basis: C3
+    - kind: requires_dependencies
+      basis: C4
+    - kind: must_cover
+      criteria: [S1, S2]
+      basis: C1
+
+gold:
+  - id: g1
+    check: principal_selection
+    dimension: decision
+    action: build
+    optimal_sets:
+      - [autoscale-v2, billing-api, data-residency, sla-dashboard, spot-orchestrator]
+  - id: g2
+    check: sequence
+    dimension: sequencing
+  - id: g3
+    check: coverage
+    dimension: coverage
+    criteria:
+      S1: [autoscale-v2, cost-explorer, spot-orchestrator]
+      S2: [audit-logs, data-residency, sso-hardening]
+
+traps:
+  - id: t1
+    description: Selecting gpu-serving because it carries the largest ARR number on the board.
+    why_attractive: >
+      1.4M is nearly double the next item and sales quotes it constantly, but
+      the supply memo blocks any initiative requiring the H2 GPU allocation
+      (C3); engineering readiness is irrelevant.
+  - id: t2
+    description: Covering S2 with audit-logs or sso-hardening, the two items literally labeled compliance.
+    why_attractive: >
+      They are the obvious S2 picks by density (112.5 and 116.7 per week),
+      and the natural-looking plan autoscale + spot + sso + audit + sla lands
+      at 2,450, only 50 short of optimal. The winning move is covering S2
+      with data-residency and spending the freed weeks on billing-api, which
+      no greedy or category-based heuristic finds.
+  - id: t3
+    description: Selecting spot-orchestrator or serverless-tier without their dependencies.
+    why_attractive: >
+      Both have strong standalone density, but spot orchestration requires
+      autoscaling v2 and the serverless tier requires the Kubernetes upgrade
+      in the same half (C4).
+
+gold_rationale: >
+  Worked math. sla-dashboard is mandatory (named deliverable of the Northwind
+  addendum, C2): 2 weeks, 150, leaving 18. gpu-serving is excluded by the
+  supply memo (C3) despite the top value. The optimum spends the remaining 18
+  weeks on autoscale-v2 (6, 800), spot-orchestrator (5, 700, dependency on
+  autoscale satisfied), data-residency (5, 620, covering S2), and billing-api
+  (2, 230): total 20 weeks, 2,500. S1 is covered by autoscale and spot. The
+  nearest rival, autoscale + spot + sso-hardening + audit-logs + sla
+  (2,450), covers S2 with the two obvious compliance items but wastes their
+  combined 7 weeks and 800 value against data-residency plus billing-api's 7
+  weeks and 850. Third best is 2,420 (cost-explorer for audit-logs).
+  Verified by exhaustive enumeration: the 2,500 set is the unique optimum;
+  every heuristic plan (grab the biggest number, pick per-category
+  favorites, greedy density) lands at 2,450 or below or violates a gate.
